@@ -1,10 +1,10 @@
-# Erdős Unit Distance: Dodecagonal Cut-and-Project Explorer
+# Erdos Unit Distance: Dodecagonal Cut-and-Project Explorer
 
 Interactive browser explorer for the 12-fold symmetric point set that came up while looking at a low-dimensional toy version of recent unit-distance constructions.
 
 [Open the interactive explorer](https://liuyao12.github.io/Erdos-unit-distance/)
 
-![Screenshot of the dodecagonal cut-and-project explorer](docs/screenshot.svg)
+![Screenshot of the dodecagonal cut-and-project explorer](docs/screenshot.jpg)
 
 The interactive page is entirely browser-side JavaScript. Viewing or using it does not require Python, a local server, or a build step.
 
@@ -61,7 +61,7 @@ $$
 U(n)=\max_{|P|=n} u(P)
 $$
 
-can be. The square-lattice count shown in the panel is a direct comparison with the classic Erdős grid construction at the same screen-visible $n$; it is a benchmark, not the unknown true optimum $U(n)$.
+can be. The square-lattice count shown in the panel is a direct comparison with the classic Erdos grid construction at the same screen-visible $n$; it is a benchmark, not the unknown true optimum $U(n)$.
 
 ## Projection Knobs
 
@@ -81,7 +81,7 @@ Other legitimate variants would translate the internal window, change its shape,
 
 - `index.html` - GitHub Pages entry point.
 - `app.js` - self-contained JavaScript reconstruction, drawing, interaction, and visible-edge counting.
-- `docs/screenshot.svg` - README preview generated from the same model-set formula.
+- `docs/screenshot.jpg` - README preview screenshot of the interactive app.
 - `dodecagonal_probe.py` - reconstructs the original radius-4 screenshot-style patch and writes an SVG.
 - `reconstruct_12fold.py` - writes a clean static SVG reconstruction.
 - `model_set_window_probe.py` - verifies the model-set interpretation and unit-difference classes.
