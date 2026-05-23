@@ -1,4 +1,4 @@
-# Erdos Unit Distance: Dodecagonal Cut-and-Project Explorer
+# Erdős Unit Distance: Dodecagonal Cut-and-Project Explorer
 
 Interactive browser explorer for the 12-fold symmetric point set that came up while looking at a low-dimensional toy version of recent unit-distance constructions.
 
@@ -6,30 +6,33 @@ Interactive browser explorer for the 12-fold symmetric point set that came up wh
 
 ![Screenshot of the dodecagonal cut-and-project explorer](docs/screenshot.svg)
 
+The interactive page is entirely browser-side JavaScript. Viewing or using it does not require Python, a local server, or a build step.
+
 This project was created entirely by Codex with GPT-5.5 Pro.
 
 ## What It Draws
 
 The hosted page is a static JavaScript app. It reconstructs the visible part of the infinite model set
 
-```text
-Lambda_W = { z in Z[zeta_12] : |z*| <= W }.
-```
+$$
+\Lambda_W=\{z\in\mathbb Z[\zeta_{12}]: |z^\star|\le W\}.
+$$
 
-Writing `rho = exp(2 pi i / 3)`, a point is represented by four integers:
+Writing $\rho=\exp(2\pi i/3)$, a point is represented by four integers:
 
-```text
-z  = a + b i + c rho + d i rho
-z* = a - b i + c rho - d i rho
-```
+$$
+z=a+bi+c\rho+di\rho,
+\qquad
+z^\star=a-bi+c\rho-di\rho .
+$$
 
-The canvas draws the physical coordinate `z`, while `z*` is the internal-space coordinate used for the cut-and-project window. Keeping `|z*| <= W` and projecting `z` gives a locally finite dodecagonal model set. Projecting the whole 4D lattice without the window would be dense.
+The canvas draws the physical coordinate $z$, while $z^\star$ is the internal-space coordinate used for the cut-and-project window. Keeping $|z^\star|\le W$ and projecting $z$ gives a locally finite dodecagonal model set. Projecting the whole 4D lattice without the window would be dense.
 
 ## Unit Edges
 
-The blue segments are all visible pairs at physical distance 1. In this `Z[zeta_12]` case, the only coefficient differences with `|Delta z| = 1` are the 12 root-of-unity directions, so the JavaScript checks those finite neighbor steps instead of doing an all-pairs search.
+The blue segments are all visible pairs at physical distance $1$. In this $\mathbb Z[\zeta_{12}]$ case, the only coefficient differences with $|\Delta z|=1$ are the 12 root-of-unity directions, so the JavaScript checks those finite neighbor steps instead of doing an all-pairs search.
 
-The optional Python scripts are probes used to verify and reproduce the same construction; the interactive page itself only needs `index.html` and `app.js`.
+The optional Python scripts are probes used to verify and reproduce the same construction. They are not used by the GitHub Pages app; the interactive page itself only needs `index.html` and `app.js`.
 
 ## Controls
 
@@ -40,15 +43,39 @@ The optional Python scripts are probes used to verify and reproduce the same con
 
 ## Metrics
 
-The status panel reports the graph induced by the points currently visible on screen:
+The status panel reports only the current visible comparison:
 
-- `n`: visible points.
-- `m`: visible unit-distance pairs.
-- `m / C(n, 2)`: the proportion of all visible point pairs that are unit distances.
-- `2m / n`: the average visible unit-distance degree.
-- `log m/log n`: a local exponent proxy for the growth question.
+- visible points `n`.
+- visible unit distances `m`.
+- the number of equal-distance pairs obtained by arranging the same `n` points in a square lattice and rescaling the most common lattice distance to length 1.
 
-For the unit-distance problem, the asymptotic object of interest is not really the pair proportion by itself. The question is how large `m` can be as a function of `n`; a construction with `m ~ n^(1 + delta)` still has `m / C(n, 2)` tending to 0. The proportion is a useful screen-density diagnostic, while average degree and `log m/log n` are closer to the growth behavior one wants to watch.
+For a finite set $P\subset\mathbb R^2$, the relevant count is
+
+$$
+u(P)=\#\{\{p,q\}\subset P: |p-q|=1\}.
+$$
+
+The unit-distance problem asks how large
+
+$$
+U(n)=\max_{|P|=n} u(P)
+$$
+
+can be. The square-lattice count shown in the panel is a direct comparison with the classic Erdős grid construction at the same screen-visible $n$; it is a benchmark, not the unknown true optimum $U(n)$.
+
+## Projection Knobs
+
+For this particular reconstruction, the cyclotomic lattice and the two embeddings are fixed:
+
+$$
+\mathbb Z[\zeta_{12}]\longrightarrow \mathbb C_{\mathrm{phys}}\times \mathbb C_{\mathrm{int}},
+\qquad
+z\longmapsto (z,z^\star).
+$$
+
+So the 12-fold symmetry and the unit-neighbor directions are rigid. The app exposes one natural knob: the window radius $W$ in $|z^\star|\le W$. Increasing $W$ lets more lattice points through and makes the visible point set denser; decreasing $W$ makes a thinner, sparser patch. This changes the accepted slice of the lattice, not the projection direction.
+
+Other legitimate variants would translate the internal window, change its shape, or replace the number field/embedding pair. Those are different model sets rather than merely a different view of this one.
 
 ## Files
 
