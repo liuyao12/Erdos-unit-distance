@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="590" viewBox="0 0 1000 590" role="img" aria-labelledby="title desc">
+  <title id="title">Dodecagonal cut-and-project explorer screenshot</title>
+  <desc id="desc">Preview of the browser-based dodecagonal model-set explorer with unit-distance edges and the simplified status panel.</desc>
+  <rect width="1000" height="590" fill="#f8f7f2"/>
+  <g stroke="#171717" stroke-opacity="0.08" stroke-width="1">
+    <path d="M0 59H1000M0 118H1000M0 177H1000M0 236H1000M0 295H1000M0 354H1000M0 413H1000M0 472H1000M0 531H1000"/>
+    <path d="M63 0V590M125 0V590M188 0V590M250 0V590M313 0V590M375 0V590M438 0V590M500 0V590M563 0V590M625 0V590M688 0V590M750 0V590M813 0V590M875 0V590M938 0V590"/>
+  </g>
+  <g stroke="#2436d8" stroke-width="1" stroke-opacity="0.34" fill="none">
+    <path d="M120 450L210 294L300 450L480 450L570 294L660 450L840 450L930 294"/>
+    <path d="M210 294L390 294L480 450L660 450L750 294L930 294"/>
+    <path d="M160 360L340 360L430 204L520 360L700 360L790 204L880 360"/>
+    <path d="M250 516L340 360L430 516L610 516L700 360L790 516"/>
+    <path d="M300 180L480 180L570 24L660 180L840 180"/>
+    <path d="M120 450L300 450M300 450L390 294M390 294L480 180M480 180L570 294M570 294L660 180M660 180L750 294M750 294L840 180"/>
+    <path d="M210 294L300 180M340 360L430 204M480 450L570 294M610 516L700 360M700 360L790 204"/>
+  </g>
+  <g fill="#f0a000" stroke="#b56e00" stroke-opacity="0.8" stroke-width="0.7">
+    <circle cx="120" cy="450" r="4"/><circle cx="210" cy="294" r="4"/><circle cx="300" cy="450" r="4"/>
+    <circle cx="480" cy="450" r="4"/><circle cx="570" cy="294" r="4"/><circle cx="660" cy="450" r="4"/>
+    <circle cx="840" cy="450" r="4"/><circle cx="930" cy="294" r="4"/><circle cx="390" cy="294" r="4"/>
+    <circle cx="750" cy="294" r="4"/><circle cx="160" cy="360" r="4"/><circle cx="340" cy="360" r="4"/>
+    <circle cx="430" cy="204" r="4"/><circle cx="520" cy="360" r="4"/><circle cx="700" cy="360" r="4"/>
+    <circle cx="790" cy="204" r="4"/><circle cx="880" cy="360" r="4"/><circle cx="250" cy="516" r="4"/>
+    <circle cx="430" cy="516" r="4"/><circle cx="610" cy="516" r="4"/><circle cx="790" cy="516" r="4"/>
+    <circle cx="300" cy="180" r="4"/><circle cx="480" cy="180" r="4"/><circle cx="570" cy="24" r="4"/>
+    <circle cx="660" cy="180" r="4"/><circle cx="840" cy="180" r="4"/>
+  </g>
+  <g font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13">
+    <rect x="16" y="16" width="344" height="54" rx="8" fill="#fff" fill-opacity="0.92" stroke="#171717" stroke-opacity="0.16"/>
+    <text x="32" y="39" fill="#171717" font-weight="700">Dodecagonal Cut-and-Project Explorer</text>
+    <text x="32" y="58" fill="#6b6b68">pure JavaScript - drag, zoom, count visible unit edges</text>
+    <rect x="610" y="462" width="374" height="96" rx="8" fill="#fff" fill-opacity="0.92" stroke="#171717" stroke-opacity="0.16"/>
+    <text x="626" y="488" fill="#171717" font-weight="700">Z[zeta_12] model set</text>
+    <text x="626" y="512" fill="#6b6b68">visible points: 2,731</text>
+    <text x="626" y="536" fill="#6b6b68">visible unit distances: 12,426</text>
+    <text x="626" y="554" fill="#6b6b68">square lattice: 19,849 equal-distance pairs</text>
+  </g>
+</svg>
