@@ -15,7 +15,7 @@ This project was created entirely by Codex with GPT-5.5 Pro.
 The hosted page is a static JavaScript app. It reconstructs the visible part of the infinite model set
 
 $$
-\Lambda_W=\{z\in\mathbb Z[\zeta_{12}]: |z^\star|\le W\}.
+\Lambda_W=\{z\in\mathbb{Z}[\zeta_{12}]: |z^\star|\le W\}.
 $$
 
 Writing $\rho=\exp(2\pi i/3)$, a point is represented by four integers:
@@ -30,7 +30,7 @@ The canvas draws the physical coordinate $z$, while $z^\star$ is the internal-sp
 
 ## Unit Edges
 
-The blue segments are all visible pairs at physical distance $1$. In this $\mathbb Z[\zeta_{12}]$ case, the only coefficient differences with $|\Delta z|=1$ are the 12 root-of-unity directions, so the JavaScript checks those finite neighbor steps instead of doing an all-pairs search.
+The blue segments are all visible pairs at physical distance $1$. In this $\mathbb{Z}[\zeta_{12}]$ case, the only coefficient differences with $|\Delta z|=1$ are the 12 root-of-unity directions, so the JavaScript checks those finite neighbor steps instead of doing an all-pairs search.
 
 The optional Python scripts are probes used to verify and reproduce the same construction. They are not used by the GitHub Pages app; the interactive page itself only needs `index.html` and `app.js`.
 
@@ -52,7 +52,7 @@ The status panel reports only the current visible comparison:
 For a finite set $P\subset\mathbb R^2$, the relevant count is
 
 $$
-u(P)=\#\{\{p,q\}\subset P: |p-q|=1\}.
+u(P)=\left|\{\{p,q\}\subset P: |p-q|=1\}\right|.
 $$
 
 The unit-distance problem asks how large
@@ -68,7 +68,7 @@ can be. The square-lattice count shown in the panel is a direct comparison with 
 For this particular reconstruction, the cyclotomic lattice and the two embeddings are fixed:
 
 $$
-\mathbb Z[\zeta_{12}]\longrightarrow \mathbb C_{\mathrm{phys}}\times \mathbb C_{\mathrm{int}},
+\mathbb{Z}[\zeta_{12}]\longrightarrow \mathbb C_{\mathrm{phys}}\times \mathbb C_{\mathrm{int}},
 \qquad
 z\longmapsto (z,z^\star).
 $$
