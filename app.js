@@ -160,6 +160,92 @@
       };
     }
 
+    const squareLatticeBenchmarkCache = new Map();
+    function addDistanceCount(counts, distSquared, placements) {
+      if (placements > 0) {
+        counts.set(distSquared, (counts.get(distSquared) || 0) + placements);
+      }
+    }
+
+    function exactSquareLatticeBlock(pointCount, width) {
+      const fullRows = Math.floor(pointCount / width);
+      const lastRow = pointCount % width;
+      const counts = new Map();
+
+      for (let dy = 0; dy < fullRows; dy += 1) {
+        if (dy === 0) {
+          for (let dx = 1; dx < width; dx += 1) {
+            addDistanceCount(counts, dx * dx, (width - dx) * fullRows);
+          }
+        } else {
+          for (let dx = -width + 1; dx < width; dx += 1) {
+            addDistanceCount(counts, dx * dx + dy * dy, (width - Math.abs(dx)) * (fullRows - dy));
+          }
+        }
+      }
+
+      if (lastRow > 0) {
+        for (let dx = 1; dx < lastRow; dx += 1) {
+          addDistanceCount(counts, dx * dx, lastRow - dx);
+        }
+        for (let dy = 1; dy <= fullRows; dy += 1) {
+          for (let dx = -width + 1; dx < lastRow; dx += 1) {
+            const start = Math.max(0, -dx);
+            const end = Math.min(width, lastRow - dx);
+            addDistanceCount(counts, dx * dx + dy * dy, end - start);
+          }
+        }
+      }
+
+      let bestDistSquared = 1;
+      let bestEdges = 0;
+      for (const [distSquared, edges] of counts) {
+        if (edges > bestEdges) {
+          bestDistSquared = distSquared;
+          bestEdges = edges;
+        }
+      }
+
+      return {
+        width,
+        rows: fullRows + (lastRow > 0 ? 1 : 0),
+        fullRows,
+        lastRow,
+        points: pointCount,
+        edges: bestEdges,
+        distSquared: bestDistSquared
+      };
+    }
+
+    function squareLatticeBenchmark(pointCount) {
+      const n = Math.max(0, Math.floor(pointCount));
+      if (squareLatticeBenchmarkCache.has(n)) return squareLatticeBenchmarkCache.get(n);
+      if (n < 2) {
+        const empty = { width: n, rows: 1, fullRows: 1, lastRow: 0, points: n, edges: 0, distSquared: 1, approximate: false };
+        squareLatticeBenchmarkCache.set(n, empty);
+        return empty;
+      }
+
+      const root = Math.ceil(Math.sqrt(n));
+      const approximate = n > 20000;
+      const firstWidth = approximate ? Math.max(1, Math.floor(root * 0.55)) : 1;
+      let best = exactSquareLatticeBlock(n, 1);
+
+      for (let width = firstWidth; width <= root; width += 1) {
+        const candidate = exactSquareLatticeBlock(n, width);
+        if (
+          candidate.edges > best.edges ||
+          (candidate.edges === best.edges && candidate.rows < best.rows)
+        ) {
+          best = candidate;
+        }
+      }
+
+      best = { ...best, approximate };
+      squareLatticeBenchmarkCache.set(n, best);
+      return best;
+    }
+
     function segmentIntersectsView(p, q, bounds) {
       const minX = Math.min(p.x, q.x);
       const maxX = Math.max(p.x, q.x);
@@ -285,27 +371,26 @@
       if (pointRadius > 2.2) ctx.stroke();
       ctx.restore();
 
-      const span = Math.max(drawBounds.xMax - drawBounds.xMin, drawBounds.yMax - drawBounds.yMin);
-      const pairs = visiblePoints * (visiblePoints - 1) / 2;
-      const pairProportion = pairs > 0 ? visibleEdges / pairs : 0;
-      const averageDegree = visiblePoints > 0 ? (2 * visibleEdges) / visiblePoints : 0;
-      const exponent = visiblePoints > 1 && visibleEdges > 1
-        ? Math.log(visibleEdges) / Math.log(visiblePoints)
-        : 0;
+      const squareBenchmark = visiblePoints > 3 ? squareLatticeBenchmark(visiblePoints) : null;
       const edgeText = state.showEdges
         ? (edgeLimit ? visibleEdges.toLocaleString() : "paused")
         : "hidden";
+      let squareText = "";
+      if (!state.showEdges) {
+        squareText = "square-lattice comparison hidden<br>";
+      } else if (!edgeLimit) {
+        squareText = "square-lattice comparison paused at this zoom<br>";
+      } else if (squareBenchmark) {
+        squareText =
+          "arranging these <strong>" + visiblePoints.toLocaleString() + "</strong> points in a square lattice would have <strong>" +
+          Math.round(squareBenchmark.edges).toLocaleString() + "</strong> equal-distance pairs" +
+          (squareBenchmark.approximate ? " approx" : "") + "<br>";
+      }
       statusEl.innerHTML =
-        "<strong>Z[ζ12] model set</strong><br>" +
-        "window |z*| ≤ <strong>" + state.windowRadius.toFixed(1) + "</strong> · " +
-        "scale <strong>" + state.scale.toFixed(1) + "</strong> px/u<br>" +
-        "visible points <strong>" + visiblePoints.toLocaleString() + "</strong> · " +
-        "visible unit pairs <strong>" + edgeText + "</strong><br>" +
-        "m / C(n, 2) <strong>" + pairProportion.toExponential(3) + "</strong> · " +
-        "2m / n <strong>" + averageDegree.toFixed(3) + "</strong> · " +
-        "log m/log n <strong>" + exponent.toFixed(3) + "</strong><br>" +
-        "center <strong>(" + state.centerX.toFixed(3) + ", " + state.centerY.toFixed(3) + ")</strong> · " +
-        "span <strong>" + span.toFixed(2) + "</strong>" +
+        "<strong>Z[zeta_12] model set</strong><br>" +
+        "visible points: <strong>" + visiblePoints.toLocaleString() + "</strong><br>" +
+        "visible unit distances: <strong>" + edgeText + "</strong><br>" +
+        squareText +
         (generated.clipped ? "<br><strong>viewport cap reached</strong>" : "");
     }
 
