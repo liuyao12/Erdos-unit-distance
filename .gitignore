@@ -1,0 +1,6 @@
+sawin_src/
+sawin_2605.20579.*
+*.tar.gz
+__pycache__/
+.DS_Store
+Thumbs.db
