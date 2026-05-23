@@ -4,6 +4,8 @@ This repository contains a static, interactive explorer for the 12-fold symmetri
 
 Open `index.html` in a browser. There is no build step and no external dependency.
 
+This project was created entirely by Codex with GPT-5.5 Pro.
+
 ## What It Draws
 
 The displayed point set is the finite viewport of the infinite model set
