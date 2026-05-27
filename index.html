@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Dodecagonal Cut-and-Project Explorer</title>
+  <title>Cyclotomic Cut-and-Project Explorer</title>
   <style>
     :root {
       --bg: #f8f7f2;
@@ -61,11 +61,33 @@
       user-select: none;
     }
 
+    .select-wrap {
+      height: 36px;
+      min-width: 132px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      border: 1px solid rgba(20, 20, 20, 0.18);
+      border-radius: 6px;
+      background: #ffffff;
+    }
+
+    select {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: #242424;
+      font: 600 12px Inter, ui-sans-serif, system-ui, sans-serif;
+      cursor: pointer;
+    }
+
     .status {
       position: fixed;
       right: 16px;
       bottom: 16px;
-      min-width: 260px;
+      min-width: 400px;
+      max-width: calc(100vw - 32px);
       padding: 10px 12px;
       background: var(--panel);
       border: 1px solid var(--panel-border);
@@ -81,6 +103,38 @@
     .status strong {
       color: var(--ink);
       font-weight: 650;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: minmax(210px, 1fr) auto;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .benchmark-previews {
+      display: flex;
+      gap: 8px;
+    }
+
+    .benchmark-preview {
+      width: 96px;
+      display: grid;
+      gap: 4px;
+      justify-items: center;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.1;
+      text-align: center;
+    }
+
+    .benchmark-preview svg {
+      width: 88px;
+      height: 88px;
+      display: block;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(20, 20, 20, 0.12);
+      border-radius: 6px;
     }
 
     button {
@@ -171,6 +225,14 @@
         flex-basis: 100%;
         min-width: 0;
       }
+
+      .status-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .benchmark-previews {
+        justify-content: flex-start;
+      }
     }
   </style>
 </head>
@@ -178,6 +240,9 @@
   <canvas id="stage"></canvas>
 
   <div class="toolbar" aria-label="controls">
+    <div class="select-wrap" title="Cyclotomic field">
+      <select id="fieldSelect" aria-label="Cyclotomic field"></select>
+    </div>
     <button id="home" title="Home: center on origin" aria-label="Home: center on origin">
       <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"></path><path d="M5.5 10.5V20h13v-9.5"></path></svg>
     </button>
@@ -189,6 +254,9 @@
     </button>
     <button id="edges" class="active" title="Toggle unit edges" aria-label="Toggle unit edges">
       <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2"></circle><circle cx="18" cy="6" r="2"></circle><circle cx="12" cy="18" r="2"></circle><path d="M8 6h8"></path><path d="m7 8 4 8"></path><path d="m17 8-4 8"></path></svg>
+    </button>
+    <button id="points" class="active" title="Toggle points" aria-label="Toggle points">
+      <svg viewBox="0 0 24 24"><circle cx="7" cy="7" r="2.2"></circle><circle cx="17" cy="8" r="2.2"></circle><circle cx="12" cy="17" r="2.2"></circle></svg>
     </button>
     <button id="grid" class="active" title="Toggle grid" aria-label="Toggle grid">
       <svg viewBox="0 0 24 24"><path d="M4 8h16"></path><path d="M4 16h16"></path><path d="M8 4v16"></path><path d="M16 4v16"></path></svg>
@@ -203,6 +271,6 @@
   </div>
 
   <div class="status" id="status"></div>
-  <script src="app.js" defer></script>
+  <script src="app.js?v=20260527-autolens2" defer></script>
 </body>
 </html>
