@@ -27,7 +27,6 @@
       label: "Q(zeta_12)",
       shortLabel: "Z[zeta_12]",
       m: 12,
-      coefficientBound: 12,
       defaultLensWorldRadius: 2.5,
       defaultWindow: 4,
       windowMin: 1,
@@ -42,7 +41,6 @@
       label: "Q(zeta_18)",
       shortLabel: "Z[zeta_18]",
       m: 18,
-      coefficientBound: 3,
       defaultLensWorldRadius: 0.8,
       defaultWindow: 4,
       windowMin: 1,
@@ -57,7 +55,6 @@
       label: "Q(zeta_24)",
       shortLabel: "Z[zeta_24]",
       m: 24,
-      coefficientBound: 2,
       defaultLensWorldRadius: 0.4,
       defaultWindow: 4,
       windowMin: 1,
@@ -72,7 +69,6 @@
       label: "Q(zeta_30)",
       shortLabel: "Z[zeta_30]",
       m: 30,
-      coefficientBound: 2,
       defaultLensWorldRadius: 0.4,
       defaultWindow: 4,
       windowMin: 1,
@@ -85,10 +81,14 @@
   ];
 
   const fieldById = new Map(FIELDS.map((field) => [field.id, field]));
-  const datasetCache = new Map();
+  const embeddingGeometryCache = new Map();
   const squareDiskBenchmarkCache = new Map();
   const UNIT_DISTANCE_SQUARED = 1;
   const UNIT_DISTANCE_TOLERANCE = 1e-8;
+  const DATA_BUFFER_AREA_FACTOR = 10;
+  const DATA_BUFFER_LINEAR_FACTOR = Math.sqrt(DATA_BUFFER_AREA_FACTOR);
+  const DATA_BUFFER_EXTRA_WORLD = 1.25;
+  const MAX_DYNAMIC_CANDIDATES = 8000000;
 
   const state = {
     width: 1,
@@ -151,6 +151,152 @@
     });
   }
 
+  function invertMatrix(matrix) {
+    const n = matrix.length;
+    const augmented = matrix.map((row, rowIndex) => {
+      const out = row.slice();
+      for (let col = 0; col < n; col += 1) {
+        out.push(col === rowIndex ? 1 : 0);
+      }
+      return out;
+    });
+
+    for (let col = 0; col < n; col += 1) {
+      let pivotRow = col;
+      let pivotSize = Math.abs(augmented[col][col]);
+      for (let row = col + 1; row < n; row += 1) {
+        const size = Math.abs(augmented[row][col]);
+        if (size > pivotSize) {
+          pivotSize = size;
+          pivotRow = row;
+        }
+      }
+      if (pivotSize < 1e-12) {
+        throw new Error("Embedding matrix is singular");
+      }
+      if (pivotRow !== col) {
+        const tmp = augmented[col];
+        augmented[col] = augmented[pivotRow];
+        augmented[pivotRow] = tmp;
+      }
+
+      const pivot = augmented[col][col];
+      for (let k = 0; k < 2 * n; k += 1) {
+        augmented[col][k] /= pivot;
+      }
+      for (let row = 0; row < n; row += 1) {
+        if (row === col) continue;
+        const factor = augmented[row][col];
+        if (Math.abs(factor) < 1e-14) continue;
+        for (let k = 0; k < 2 * n; k += 1) {
+          augmented[row][k] -= factor * augmented[col][k];
+        }
+      }
+    }
+
+    return augmented.map((row) => row.slice(n));
+  }
+
+  function embeddingGeometry(field) {
+    if (embeddingGeometryCache.has(field.id)) return embeddingGeometryCache.get(field.id);
+
+    const embeddings = embeddingValues(field.m);
+    const matrix = [];
+    for (const powers of embeddings) {
+      matrix.push(powers.map((power) => power.re));
+      matrix.push(powers.map((power) => power.im));
+    }
+
+    const geometry = {
+      embeddings,
+      inverse: invertMatrix(matrix)
+    };
+    embeddingGeometryCache.set(field.id, geometry);
+    return geometry;
+  }
+
+  function expandBounds(bounds, linearFactor, extra) {
+    const centerX = (bounds.xMin + bounds.xMax) / 2;
+    const centerY = (bounds.yMin + bounds.yMax) / 2;
+    const halfWidth = (bounds.xMax - bounds.xMin) * linearFactor / 2 + extra;
+    const halfHeight = (bounds.yMax - bounds.yMin) * linearFactor / 2 + extra;
+    return {
+      xMin: centerX - halfWidth,
+      xMax: centerX + halfWidth,
+      yMin: centerY - halfHeight,
+      yMax: centerY + halfHeight
+    };
+  }
+
+  function boundsContains(outer, inner) {
+    const eps = 1e-9;
+    return (
+      outer.xMin <= inner.xMin + eps &&
+      outer.xMax >= inner.xMax - eps &&
+      outer.yMin <= inner.yMin + eps &&
+      outer.yMax >= inner.yMax - eps
+    );
+  }
+
+  function coefficientRangesForRegion(field, windowRadius, physicalBounds) {
+    const degree = PHI[field.m].length - 1;
+    const geometry = embeddingGeometry(field);
+    const intervals = [
+      [physicalBounds.xMin, physicalBounds.xMax],
+      [physicalBounds.yMin, physicalBounds.yMax]
+    ];
+
+    for (let i = 2; i < degree; i += 1) {
+      intervals.push([-windowRadius, windowRadius]);
+    }
+
+    const ranges = [];
+    let candidateCount = 1;
+    for (let coeffIndex = 0; coeffIndex < degree; coeffIndex += 1) {
+      let minValue = 0;
+      let maxValue = 0;
+      for (let row = 0; row < degree; row += 1) {
+        const coefficient = geometry.inverse[coeffIndex][row];
+        const low = intervals[row][0];
+        const high = intervals[row][1];
+        if (coefficient >= 0) {
+          minValue += coefficient * low;
+          maxValue += coefficient * high;
+        } else {
+          minValue += coefficient * high;
+          maxValue += coefficient * low;
+        }
+      }
+
+      const min = Math.floor(minValue - 1e-9);
+      const max = Math.ceil(maxValue + 1e-9);
+      const size = Math.max(0, max - min + 1);
+      ranges.push({ min, max, size });
+      candidateCount *= size;
+    }
+
+    return { ranges, candidateCount };
+  }
+
+  function datasetPlan(field, windowRadius, viewBounds) {
+    const factors = [DATA_BUFFER_LINEAR_FACTOR, 2.5, 2, 1.6, 1.3, 1.1, 1];
+    let fallback = null;
+
+    for (const factor of factors) {
+      const bounds = expandBounds(viewBounds, factor, DATA_BUFFER_EXTRA_WORLD);
+      const { ranges, candidateCount } = coefficientRangesForRegion(field, windowRadius, bounds);
+      const plan = { bounds, ranges, candidateCount };
+      if (!fallback || candidateCount < fallback.candidateCount) {
+        fallback = plan;
+      }
+      if (candidateCount <= MAX_DYNAMIC_CANDIDATES) {
+        return plan;
+      }
+    }
+
+    return fallback;
+  }
+
   function isUnitDistance(p, q) {
     const dx = p.x - q.x;
     const dy = p.y - q.y;
@@ -196,17 +342,15 @@
     return edges;
   }
 
-  function buildDataset(field, windowRadius) {
-    const cacheKey = field.id + ":" + windowRadius.toFixed(2);
-    if (datasetCache.has(cacheKey)) return datasetCache.get(cacheKey);
-
+  function buildDataset(field, windowRadius, plan) {
     const started = performance.now();
     const degree = PHI[field.m].length - 1;
-    const base = 2 * field.coefficientBound + 1;
-    const total = Math.pow(base, degree);
-    const embeddings = embeddingValues(field.m);
+    const total = plan.candidateCount;
+    const embeddings = embeddingGeometry(field).embeddings;
     const internalRadiusSquared = windowRadius * windowRadius;
     const coeffs = new Array(degree).fill(0);
+    const sizes = plan.ranges.map((range) => range.size);
+    const lows = plan.ranges.map((range) => range.min);
     const points = [];
     let minX = Infinity;
     let minY = Infinity;
@@ -216,8 +360,8 @@
     for (let code = 0; code < total; code += 1) {
       let value = code;
       for (let i = 0; i < degree; i += 1) {
-        coeffs[i] = (value % base) - field.coefficientBound;
-        value = Math.floor(value / base);
+        coeffs[i] = lows[i] + (value % sizes[i]);
+        value = Math.floor(value / sizes[i]);
       }
 
       let accepted = true;
@@ -235,6 +379,15 @@
         if (embeddingIndex === 0) {
           x = re;
           y = im;
+          if (
+            x < plan.bounds.xMin - 1e-9 ||
+            x > plan.bounds.xMax + 1e-9 ||
+            y < plan.bounds.yMin - 1e-9 ||
+            y > plan.bounds.yMax + 1e-9
+          ) {
+            accepted = false;
+            break;
+          }
         } else if (normSquared > internalRadiusSquared + 1e-9) {
           accepted = false;
           break;
@@ -257,11 +410,30 @@
       windowRadius,
       points,
       edges,
+      queryBounds: plan.bounds,
+      candidateCount: total,
       bounds: { minX, minY, maxX, maxY },
       buildMs: performance.now() - started,
       exactPhysicalCrop: false
     };
-    datasetCache.set(cacheKey, dataset);
+    return dataset;
+  }
+
+  function ensureDataset(field, windowRadius, viewBounds) {
+    const current = state.dataset;
+    if (
+      current &&
+      current.field.id === field.id &&
+      current.windowRadius === windowRadius &&
+      current.queryBounds &&
+      boundsContains(current.queryBounds, viewBounds)
+    ) {
+      return current;
+    }
+
+    const plan = datasetPlan(field, windowRadius, viewBounds);
+    const dataset = buildDataset(field, windowRadius, plan);
+    state.dataset = dataset;
     return dataset;
   }
 
@@ -549,8 +721,8 @@
   function render() {
     state.dirty = false;
     const field = currentField();
-    const dataset = state.dataset || buildDataset(field, state.windowRadius);
-    state.dataset = dataset;
+    const viewBounds = visibleBounds(24);
+    const dataset = ensureDataset(field, state.windowRadius, viewBounds);
     const points = dataset.points;
     const edges = dataset.edges;
 
@@ -658,6 +830,10 @@
       "field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong><br>" +
       "square lattice, circular disk: <strong>" + diskText + "</strong>" +
       "</div><div class=\"benchmark-previews\">" + diskPreview + "</div></div>";
+    statusEl.title =
+      "computed viewport patch: " + formatNumber(points.length) + " points, " +
+      formatNumber(edges.length) + " unit edges from " +
+      formatNumber(dataset.candidateCount) + " coefficient candidates";
 
     if (state.autoFitPending) {
       state.autoFitPending = false;
@@ -689,7 +865,7 @@
     windowInput.value = String(field.defaultWindow);
     windowLabel.textContent = "W " + state.windowRadius.toFixed(1);
     fieldSelect.value = field.id;
-    state.dataset = buildDataset(field, state.windowRadius);
+    state.dataset = null;
     fitInitial();
   }
 
@@ -697,7 +873,7 @@
     const field = currentField();
     state.windowRadius = Number(windowInput.value);
     windowLabel.textContent = "W " + state.windowRadius.toFixed(1);
-    state.dataset = buildDataset(field, state.windowRadius);
+    state.dataset = null;
     state.dirty = true;
     requestDraw();
   }
