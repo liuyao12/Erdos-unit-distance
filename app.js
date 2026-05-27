@@ -1049,7 +1049,7 @@
       "visible points: <strong>" + formatNumber(lensPoints) + "</strong><br>" +
       "unit edges: <strong>" + lensEdgeText + "</strong><br>" +
       "field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong><br>" +
-      "square lattice, circular disk: <strong>" + diskText + "</strong>" +
+      "same visible points in square lattice disk: <strong>" + diskText + "</strong>" +
       "</div><div class=\"benchmark-previews\">" + diskPreview + "</div></div>";
     statusEl.title =
       "computed viewport patch: " + formatNumber(points.length) + " points, " +
