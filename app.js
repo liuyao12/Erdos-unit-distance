@@ -154,6 +154,7 @@
   const DATA_BUFFER_LINEAR_FACTOR = Math.sqrt(DATA_BUFFER_AREA_FACTOR);
   const DATA_BUFFER_EXTRA_WORLD = 1.25;
   const MAX_DYNAMIC_CANDIDATES = 8000000;
+  const MAX_MULTIQ_SCALAR_CANDIDATES = 1000000;
 
   const state = {
     width: 1,
@@ -412,6 +413,7 @@
   function datasetPlan(field, windowRadius, viewBounds) {
     const factors = [DATA_BUFFER_LINEAR_FACTOR, 2.5, 2, 1.6, 1.3, 1.1, 1];
     let fallback = null;
+    const maxCandidates = field.type === "multiquadratic" ? MAX_MULTIQ_SCALAR_CANDIDATES : MAX_DYNAMIC_CANDIDATES;
 
     for (const factor of factors) {
       const bounds = expandBounds(viewBounds, factor, DATA_BUFFER_EXTRA_WORLD);
@@ -428,7 +430,7 @@
       if (!fallback || candidateCount < fallback.candidateCount) {
         fallback = plan;
       }
-      if (candidateCount <= MAX_DYNAMIC_CANDIDATES) {
+      if (candidateCount <= maxCandidates) {
         return plan;
       }
     }
