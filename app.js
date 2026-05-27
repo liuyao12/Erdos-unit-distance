@@ -1,6 +1,7 @@
 (() => {
   const canvas = document.getElementById("stage");
   const ctx = canvas.getContext("2d", { alpha: false });
+  const toolbarEl = document.querySelector(".toolbar");
   const statusEl = document.getElementById("status");
   const fieldSelect = document.getElementById("fieldSelect");
   const homeButton = document.getElementById("home");
@@ -12,8 +13,6 @@
   const saveButton = document.getElementById("save");
   const windowInput = document.getElementById("windowRadius");
   const windowLabel = document.getElementById("windowLabel");
-  const lensInput = document.getElementById("lensRadius");
-  const lensLabel = document.getElementById("lensLabel");
 
   const PHI = {
     12: [1, 0, -1, 0, 1],
@@ -87,7 +86,6 @@
 
   const fieldById = new Map(FIELDS.map((field) => [field.id, field]));
   const datasetCache = new Map();
-  const squareLatticeBenchmarkCache = new Map();
   const squareDiskBenchmarkCache = new Map();
 
   const state = {
@@ -99,13 +97,13 @@
     scale: 80,
     fieldId: "zeta12",
     windowRadius: 4,
-    lensRadius: 230,
     showEdges: true,
     showPoints: true,
     showGrid: true,
     dragging: false,
     lastX: 0,
     lastY: 0,
+    autoFitPending: false,
     dirty: true,
     dataset: null
   };
@@ -305,84 +303,6 @@
     return Math.round(value).toLocaleString();
   }
 
-  function addDistanceCount(counts, distSquared, placements) {
-    if (placements > 0) {
-      counts.set(distSquared, (counts.get(distSquared) || 0) + placements);
-    }
-  }
-
-  function exactSquareLatticeBlock(pointCount, width) {
-    const fullRows = Math.floor(pointCount / width);
-    const lastRow = pointCount % width;
-    const counts = new Map();
-
-    for (let dy = 0; dy < fullRows; dy += 1) {
-      if (dy === 0) {
-        for (let dx = 1; dx < width; dx += 1) {
-          addDistanceCount(counts, dx * dx, (width - dx) * fullRows);
-        }
-      } else {
-        for (let dx = -width + 1; dx < width; dx += 1) {
-          addDistanceCount(counts, dx * dx + dy * dy, (width - Math.abs(dx)) * (fullRows - dy));
-        }
-      }
-    }
-
-    if (lastRow > 0) {
-      for (let dx = 1; dx < lastRow; dx += 1) {
-        addDistanceCount(counts, dx * dx, lastRow - dx);
-      }
-      for (let dy = 1; dy <= fullRows; dy += 1) {
-        for (let dx = -width + 1; dx < lastRow; dx += 1) {
-          const start = Math.max(0, -dx);
-          const end = Math.min(width, lastRow - dx);
-          addDistanceCount(counts, dx * dx + dy * dy, end - start);
-        }
-      }
-    }
-
-    let bestDistSquared = 1;
-    let bestEdges = 0;
-    for (const [distSquared, edges] of counts) {
-      if (edges > bestEdges) {
-        bestDistSquared = distSquared;
-        bestEdges = edges;
-      }
-    }
-
-    return {
-      width,
-      rows: fullRows + (lastRow > 0 ? 1 : 0),
-      points: pointCount,
-      edges: bestEdges,
-      distSquared: bestDistSquared
-    };
-  }
-
-  function squareLatticeBenchmark(pointCount) {
-    const n = Math.max(0, Math.floor(pointCount));
-    if (squareLatticeBenchmarkCache.has(n)) return squareLatticeBenchmarkCache.get(n);
-    if (n < 2) {
-      const empty = { width: n, rows: 1, points: n, edges: 0, distSquared: 1, approximate: false };
-      squareLatticeBenchmarkCache.set(n, empty);
-      return empty;
-    }
-
-    const root = Math.ceil(Math.sqrt(n));
-    const approximate = n > 20000;
-    const firstWidth = approximate ? Math.max(1, Math.floor(root * 0.55)) : 1;
-    let best = exactSquareLatticeBlock(n, 1);
-    for (let width = firstWidth; width <= root; width += 1) {
-      const candidate = exactSquareLatticeBlock(n, width);
-      if (candidate.edges > best.edges || (candidate.edges === best.edges && candidate.rows < best.rows)) {
-        best = candidate;
-      }
-    }
-    best = { ...best, approximate };
-    squareLatticeBenchmarkCache.set(n, best);
-    return best;
-  }
-
   function squareDiskPoints(pointCount) {
     if (pointCount <= 0) return [];
     const radius = Math.ceil(Math.sqrt(pointCount / Math.PI)) + 3;
@@ -400,15 +320,6 @@
       a.x - b.x
     ));
     return points.slice(0, pointCount);
-  }
-
-  function squareSidePoints(pointCount, benchmark) {
-    const points = [];
-    const width = Math.max(1, benchmark.width || 1);
-    for (let i = 0; i < pointCount; i += 1) {
-      points.push({ x: i % width, y: Math.floor(i / width) });
-    }
-    return points;
   }
 
   function benchmarkPreview(title, points) {
@@ -494,9 +405,42 @@
     return benchmark;
   }
 
-  function lensScreenRadius() {
-    const cap = Math.max(32, Math.min(state.width, state.height) / 2 - 28);
-    return Math.max(16, Math.min(cap, state.lensRadius));
+  function lensScreenGeometry() {
+    const margin = 16;
+    let left = margin;
+    let top = margin;
+    let right = state.width - margin;
+    let bottom = state.height - margin;
+
+    if (toolbarEl) {
+      const rect = toolbarEl.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        top = Math.max(top, Math.min(state.height - margin, rect.bottom + margin));
+      }
+    }
+
+    if (statusEl) {
+      const rect = statusEl.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        bottom = Math.min(bottom, Math.max(margin, rect.top - margin));
+      }
+    }
+
+    if (right - left < 96) {
+      left = margin;
+      right = state.width - margin;
+    }
+    if (bottom - top < 96) {
+      top = margin;
+      bottom = state.height - margin;
+    }
+
+    const radius = Math.max(24, Math.min((right - left) / 2, (bottom - top) / 2));
+    return {
+      x: (left + right) / 2,
+      y: (top + bottom) / 2,
+      radius
+    };
   }
 
   function resize() {
@@ -516,7 +460,8 @@
     const field = currentField();
     state.centerX = 0;
     state.centerY = 0;
-    state.scale = Math.max(22, Math.min(1200, lensScreenRadius() / field.defaultLensWorldRadius));
+    state.scale = Math.max(22, Math.min(1200, lensScreenGeometry().radius / field.defaultLensWorldRadius));
+    state.autoFitPending = true;
     state.dirty = true;
     requestDraw();
   }
@@ -587,12 +532,12 @@
     ctx.restore();
   }
 
-  function drawLensShade(radius) {
+  function drawLensShade(lens) {
     ctx.save();
     ctx.fillStyle = "rgba(208, 211, 214, 0.34)";
     ctx.beginPath();
     ctx.rect(0, 0, state.width, state.height);
-    ctx.arc(state.width / 2, state.height / 2, radius, 0, Math.PI * 2, true);
+    ctx.arc(lens.x, lens.y, lens.radius, 0, Math.PI * 2, true);
     ctx.fill("evenodd");
     ctx.restore();
 
@@ -601,7 +546,7 @@
     ctx.lineWidth = 1.5;
     ctx.setLineDash([8, 6]);
     ctx.beginPath();
-    ctx.arc(state.width / 2, state.height / 2, radius, 0, Math.PI * 2);
+    ctx.arc(lens.x, lens.y, lens.radius, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
   }
@@ -619,8 +564,8 @@
     ctx.fillRect(0, 0, state.width, state.height);
 
     const drawBounds = visibleBounds(12);
-    const lensRadius = lensScreenRadius();
-    const lensRadiusSquared = lensRadius * lensRadius;
+    const lens = lensScreenGeometry();
+    const lensRadiusSquared = lens.radius * lens.radius;
     const visible = new Uint8Array(points.length);
     const inLens = new Uint8Array(points.length);
     let visiblePoints = 0;
@@ -636,8 +581,8 @@
         visible[i] = 1;
         visiblePoints += 1;
       }
-      const dx = ps.x - state.width / 2;
-      const dy = ps.y - state.height / 2;
+      const dx = ps.x - lens.x;
+      const dy = ps.y - lens.y;
       if (dx * dx + dy * dy <= lensRadiusSquared) {
         inLens[i] = 1;
         lensPoints += 1;
@@ -702,19 +647,14 @@
       ctx.restore();
     }
 
-    drawLensShade(lensRadius);
+    drawLensShade(lens);
 
-    const sideBenchmark = lensPoints > 3 ? squareLatticeBenchmark(lensPoints) : null;
     const diskBenchmark = lensPoints > 3 ? squareDiskBenchmark(lensPoints) : null;
-    const lensWorldRadius = lensRadius / state.scale;
+    const lensWorldRadius = lens.radius / state.scale;
     const lensEdgeText = countEdges ? formatNumber(lensEdges) : "paused";
-    const sideText = sideBenchmark ? formatNumber(sideBenchmark.edges) : "0";
     const diskText = diskBenchmark
       ? (diskBenchmark.exact ? formatNumber(diskBenchmark.edges) : "paused")
       : "0";
-    const sidePreview = sideBenchmark
-      ? benchmarkPreview("side row", squareSidePoints(lensPoints, sideBenchmark))
-      : benchmarkPreview("side row", []);
     const diskPreview = diskBenchmark && diskBenchmark.exact
       ? benchmarkPreview("circular disk", squareDiskPoints(lensPoints))
       : benchmarkPreview("circular disk", []);
@@ -725,9 +665,18 @@
       "visible points: <strong>" + formatNumber(lensPoints) + "</strong><br>" +
       "unit edges: <strong>" + lensEdgeText + "</strong><br>" +
       "field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong><br>" +
-      "square lattice, side row: <strong>" + sideText + "</strong><br>" +
       "square lattice, circular disk: <strong>" + diskText + "</strong>" +
-      "</div><div class=\"benchmark-previews\">" + sidePreview + diskPreview + "</div></div>";
+      "</div><div class=\"benchmark-previews\">" + diskPreview + "</div></div>";
+
+    if (state.autoFitPending) {
+      state.autoFitPending = false;
+      const targetScale = Math.max(22, Math.min(1200, lensScreenGeometry().radius / field.defaultLensWorldRadius));
+      if (Math.abs(targetScale - state.scale) > 0.5) {
+        state.scale = targetScale;
+        state.dirty = true;
+        requestDraw();
+      }
+    }
   }
 
   let raf = 0;
@@ -762,13 +711,6 @@
     requestDraw();
   }
 
-  function updateLensRadius() {
-    state.lensRadius = Number(lensInput.value);
-    lensLabel.textContent = "lens " + Math.round(state.lensRadius) + "px";
-    state.dirty = true;
-    requestDraw();
-  }
-
   function initControls() {
     for (const field of FIELDS) {
       const option = document.createElement("option");
@@ -776,8 +718,6 @@
       option.textContent = field.label;
       fieldSelect.appendChild(option);
     }
-    lensInput.value = String(state.lensRadius);
-    updateLensRadius();
     setField(state.fieldId);
   }
 
@@ -843,7 +783,6 @@
   windowInput.addEventListener("input", () => {
     windowLabel.textContent = "W " + Number(windowInput.value).toFixed(1);
   });
-  lensInput.addEventListener("input", updateLensRadius);
   saveButton.addEventListener("click", () => {
     const field = currentField();
     const link = document.createElement("a");
