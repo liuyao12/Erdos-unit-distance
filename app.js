@@ -88,6 +88,7 @@
   const fieldById = new Map(FIELDS.map((field) => [field.id, field]));
   const datasetCache = new Map();
   const squareLatticeBenchmarkCache = new Map();
+  const squareDiskBenchmarkCache = new Map();
 
   const state = {
     width: 1,
@@ -382,6 +383,66 @@
     return best;
   }
 
+  function squareDiskPoints(pointCount) {
+    if (pointCount <= 0) return [];
+    const radius = Math.ceil(Math.sqrt(pointCount / Math.PI)) + 3;
+    const points = [];
+    for (let y = -radius; y <= radius; y += 1) {
+      for (let x = -radius; x <= radius; x += 1) {
+        points.push({ x, y, distSquared: x * x + y * y });
+      }
+    }
+    points.sort((a, b) => (
+      a.distSquared - b.distSquared ||
+      Math.abs(a.y) - Math.abs(b.y) ||
+      Math.abs(a.x) - Math.abs(b.x) ||
+      a.y - b.y ||
+      a.x - b.x
+    ));
+    return points.slice(0, pointCount);
+  }
+
+  function squareDiskBenchmark(pointCount) {
+    const n = Math.max(0, Math.floor(pointCount));
+    if (squareDiskBenchmarkCache.has(n)) return squareDiskBenchmarkCache.get(n);
+    if (n < 2) {
+      const empty = { points: n, edges: 0, distSquared: 1, exact: true };
+      squareDiskBenchmarkCache.set(n, empty);
+      return empty;
+    }
+    if (n > 6000) {
+      const paused = { points: n, edges: null, distSquared: null, exact: false };
+      squareDiskBenchmarkCache.set(n, paused);
+      return paused;
+    }
+
+    const points = squareDiskPoints(n);
+    const counts = new Map();
+    for (let i = 0; i < points.length; i += 1) {
+      const p = points[i];
+      for (let j = i + 1; j < points.length; j += 1) {
+        const q = points[j];
+        const dx = p.x - q.x;
+        const dy = p.y - q.y;
+        const distSquared = dx * dx + dy * dy;
+        counts.set(distSquared, (counts.get(distSquared) || 0) + 1);
+      }
+    }
+
+    let bestDistSquared = 1;
+    let bestEdges = 0;
+    for (const [distSquared, edges] of counts) {
+      if (edges > bestEdges) {
+        bestDistSquared = distSquared;
+        bestEdges = edges;
+      }
+    }
+
+    const benchmark = { points: n, edges: bestEdges, distSquared: bestDistSquared, exact: true };
+    squareDiskBenchmarkCache.set(n, benchmark);
+    return benchmark;
+  }
+
   function lensScreenRadius() {
     const cap = Math.max(32, Math.min(state.width, state.height) / 2 - 28);
     return Math.max(16, Math.min(cap, state.lensRadius));
@@ -592,30 +653,22 @@
 
     drawLensShade(lensRadius);
 
-    const lensBenchmark = lensPoints > 3 ? squareLatticeBenchmark(lensPoints) : null;
+    const sideBenchmark = lensPoints > 3 ? squareLatticeBenchmark(lensPoints) : null;
+    const diskBenchmark = lensPoints > 3 ? squareDiskBenchmark(lensPoints) : null;
     const lensWorldRadius = lensRadius / state.scale;
-    const visibleEdgeText = state.showEdges
-      ? (drawEdges || countEdges ? formatNumber(visibleEdges) : "paused")
-      : "hidden";
     const lensEdgeText = countEdges ? formatNumber(lensEdges) : "paused";
-    const squareText = lensBenchmark
-      ? "lens square benchmark: <strong>" + formatNumber(lensBenchmark.edges) + "</strong>" +
-        (lensBenchmark.approximate ? " approx" : "") +
-        (countEdges ? ", delta: <strong>" + formatNumber(lensEdges - lensBenchmark.edges) + "</strong>" : "") + "<br>"
-      : "";
+    const sideText = sideBenchmark ? formatNumber(sideBenchmark.edges) : "0";
+    const diskText = diskBenchmark
+      ? (diskBenchmark.exact ? formatNumber(diskBenchmark.edges) : "paused")
+      : "0";
 
     statusEl.innerHTML =
-      "<strong>" + field.label + " cut-and-project sample</strong><br>" +
-      "sample: <strong>" + formatNumber(points.length) + "</strong> points, <strong>" +
-      formatNumber(edges.length) + "</strong> guaranteed unit edges<br>" +
-      "visible: <strong>" + formatNumber(visiblePoints) + "</strong> points, <strong>" +
-      visibleEdgeText + "</strong> unit edges<br>" +
-      "lens: <strong>" + formatNumber(lensPoints) + "</strong> points, <strong>" +
-      lensEdgeText + "</strong> unit edges, radius <strong>" + lensWorldRadius.toFixed(2) + "</strong><br>" +
-      squareText +
-      "window W: <strong>" + state.windowRadius.toFixed(1) + "</strong>, coefficient box: <strong>[-" +
-      field.coefficientBound + "," + field.coefficientBound + "]^" + (PHI[field.m].length - 1) +
-      "</strong>";
+      "<strong>" + field.label + "</strong><br>" +
+      "visible points: <strong>" + formatNumber(lensPoints) + "</strong><br>" +
+      "unit edges: <strong>" + lensEdgeText + "</strong><br>" +
+      "field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong><br>" +
+      "square lattice, side row: <strong>" + sideText + "</strong><br>" +
+      "square lattice, circular disk: <strong>" + diskText + "</strong>";
   }
 
   let raf = 0;
