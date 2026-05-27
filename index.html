@@ -137,6 +137,44 @@
       border-radius: 6px;
     }
 
+    .point-tooltip {
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 3;
+      max-width: min(360px, calc(100vw - 24px));
+      padding: 8px 10px;
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid rgba(20, 20, 20, 0.18);
+      border-radius: 6px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.1);
+      color: var(--ink);
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-999px, -999px);
+      transition: opacity 80ms ease;
+      user-select: none;
+      visibility: hidden;
+    }
+
+    .point-tooltip.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .tooltip-field {
+      margin-bottom: 3px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.15;
+    }
+
+    .tooltip-expression {
+      font: 600 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      overflow-wrap: anywhere;
+    }
+
     button {
       width: 36px;
       height: 36px;
@@ -238,6 +276,7 @@
 </head>
 <body>
   <canvas id="stage"></canvas>
+  <div class="point-tooltip" id="pointTooltip" aria-hidden="true"></div>
 
   <div class="toolbar" aria-label="controls">
     <div class="select-wrap" title="Field">
@@ -271,6 +310,6 @@
   </div>
 
   <div class="status" id="status"></div>
-  <script src="app.js?v=20260527-erdos-grid" defer></script>
+  <script src="app.js?v=20260527-hover-coefficients" defer></script>
 </body>
 </html>
