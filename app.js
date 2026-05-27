@@ -552,9 +552,26 @@
     return Math.round(value).toLocaleString();
   }
 
+  function superscriptNumber(value) {
+    const digits = {
+      "-": "⁻",
+      "0": "⁰",
+      "1": "¹",
+      "2": "²",
+      "3": "³",
+      "4": "⁴",
+      "5": "⁵",
+      "6": "⁶",
+      "7": "⁷",
+      "8": "⁸",
+      "9": "⁹"
+    };
+    return String(value).split("").map((character) => digits[character] || character).join("");
+  }
+
   function formatZetaPower(field, power) {
-    if (power === 1) return "zeta_" + field.m;
-    return "zeta_" + field.m + "^" + power;
+    if (power === 1) return "ζ";
+    return "ζ" + superscriptNumber(power);
   }
 
   function formatCyclotomicInteger(field, coeffs) {
@@ -663,7 +680,7 @@
       const expressionEl = document.createElement("div");
       fieldEl.className = "tooltip-field";
       expressionEl.className = "tooltip-expression";
-      fieldEl.textContent = field.shortLabel;
+      fieldEl.textContent = "Z[ζ], ζ" + superscriptNumber(field.m) + " = 1";
       expressionEl.textContent = formatCyclotomicInteger(field, point.coeffs);
       tooltipEl.replaceChildren(fieldEl, expressionEl);
       state.hoverPoint = point;
