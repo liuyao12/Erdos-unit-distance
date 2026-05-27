@@ -87,6 +87,8 @@
   const fieldById = new Map(FIELDS.map((field) => [field.id, field]));
   const datasetCache = new Map();
   const squareDiskBenchmarkCache = new Map();
+  const UNIT_DISTANCE_SQUARED = 1;
+  const UNIT_DISTANCE_TOLERANCE = 1e-8;
 
   const state = {
     width: 1,
@@ -119,45 +121,6 @@
     return x;
   }
 
-  function coeffKey(coeffs) {
-    return coeffs.join(",");
-  }
-
-  function shiftedCoeffKey(coeffs, step) {
-    let key = "";
-    for (let i = 0; i < coeffs.length; i += 1) {
-      if (i) key += ",";
-      key += coeffs[i] + step[i];
-    }
-    return key;
-  }
-
-  function multiplyByX(vector, phi) {
-    const degree = phi.length - 1;
-    const carry = vector[degree - 1];
-    const out = new Array(degree).fill(0);
-    for (let i = degree - 1; i > 0; i -= 1) {
-      out[i] = vector[i - 1];
-    }
-    if (carry) {
-      for (let i = 0; i < degree; i += 1) {
-        out[i] -= carry * phi[i];
-      }
-    }
-    return out;
-  }
-
-  function rootSteps(m) {
-    const phi = PHI[m];
-    const degree = phi.length - 1;
-    const steps = [new Array(degree).fill(0)];
-    steps[0][0] = 1;
-    for (let i = 1; i < m; i += 1) {
-      steps.push(multiplyByX(steps[i - 1], phi));
-    }
-    return steps;
-  }
-
   function embeddingRepresentatives(m) {
     const reps = [];
     for (let r = 1; r < m; r += 1) {
@@ -188,6 +151,51 @@
     });
   }
 
+  function isUnitDistance(p, q) {
+    const dx = p.x - q.x;
+    const dy = p.y - q.y;
+    const distanceSquared = dx * dx + dy * dy;
+    return Math.abs(distanceSquared - UNIT_DISTANCE_SQUARED) <= UNIT_DISTANCE_TOLERANCE;
+  }
+
+  function buildUnitDistanceEdges(points) {
+    const cellSize = 1;
+    const neighborRange = 2;
+    const grid = new Map();
+    const edges = [];
+
+    const cellKey = (x, y) => x + "," + y;
+
+    for (let i = 0; i < points.length; i += 1) {
+      const p = points[i];
+      const cellX = Math.floor(p.x / cellSize);
+      const cellY = Math.floor(p.y / cellSize);
+
+      for (let oy = -neighborRange; oy <= neighborRange; oy += 1) {
+        for (let ox = -neighborRange; ox <= neighborRange; ox += 1) {
+          const bucket = grid.get(cellKey(cellX + ox, cellY + oy));
+          if (!bucket) continue;
+
+          for (const j of bucket) {
+            if (isUnitDistance(p, points[j])) {
+              edges.push([j, i]);
+            }
+          }
+        }
+      }
+
+      const key = cellKey(cellX, cellY);
+      let bucket = grid.get(key);
+      if (!bucket) {
+        bucket = [];
+        grid.set(key, bucket);
+      }
+      bucket.push(i);
+    }
+
+    return edges;
+  }
+
   function buildDataset(field, windowRadius) {
     const cacheKey = field.id + ":" + windowRadius.toFixed(2);
     if (datasetCache.has(cacheKey)) return datasetCache.get(cacheKey);
@@ -200,7 +208,6 @@
     const internalRadiusSquared = windowRadius * windowRadius;
     const coeffs = new Array(degree).fill(0);
     const points = [];
-    const index = new Map();
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
@@ -235,9 +242,7 @@
       }
 
       if (accepted) {
-        const savedCoeffs = coeffs.slice();
-        index.set(coeffKey(savedCoeffs), points.length);
-        points.push({ x, y, coeffs: savedCoeffs });
+        points.push({ x, y });
         minX = Math.min(minX, x);
         minY = Math.min(minY, y);
         maxX = Math.max(maxX, x);
@@ -245,17 +250,7 @@
       }
     }
 
-    const steps = rootSteps(field.m);
-    const edges = [];
-    for (let i = 0; i < points.length; i += 1) {
-      const coeff = points[i].coeffs;
-      for (const step of steps) {
-        const j = index.get(shiftedCoeffKey(coeff, step));
-        if (j !== undefined && i < j) {
-          edges.push([i, j]);
-        }
-      }
-    }
+    const edges = buildUnitDistanceEdges(points);
 
     const dataset = {
       field,
@@ -593,7 +588,6 @@
     const countEdgeLimit = 1600000;
     const drawEdges = state.showEdges && edges.length <= drawEdgeLimit;
     const countEdges = edges.length <= countEdgeLimit;
-    let visibleEdges = 0;
     let lensEdges = 0;
 
     if (drawEdges || countEdges) {
@@ -605,9 +599,9 @@
       }
 
       for (const [i, j] of edges) {
-        const visibleEdge = visible[i] && visible[j];
-        if (visibleEdge) {
-          visibleEdges += 1;
+        const lensEdge = inLens[i] && inLens[j];
+        if (lensEdge) {
+          lensEdges += 1;
           if (drawEdges) {
             const p = points[i];
             const q = points[j];
@@ -616,9 +610,6 @@
             ctx.moveTo(ps.x, ps.y);
             ctx.lineTo(qs.x, qs.y);
           }
-        }
-        if (inLens[i] && inLens[j]) {
-          lensEdges += 1;
         }
       }
 
