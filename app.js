@@ -402,6 +402,57 @@
     return points.slice(0, pointCount);
   }
 
+  function squareSidePoints(pointCount, benchmark) {
+    const points = [];
+    const width = Math.max(1, benchmark.width || 1);
+    for (let i = 0; i < pointCount; i += 1) {
+      points.push({ x: i % width, y: Math.floor(i / width) });
+    }
+    return points;
+  }
+
+  function benchmarkPreview(title, points) {
+    if (!points.length) {
+      return "<div class=\"benchmark-preview\"><svg viewBox=\"0 0 88 88\" aria-hidden=\"true\"></svg><span>" + title + "</span></div>";
+    }
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const point of points) {
+      minX = Math.min(minX, point.x);
+      minY = Math.min(minY, point.y);
+      maxX = Math.max(maxX, point.x);
+      maxY = Math.max(maxY, point.y);
+    }
+
+    const pad = 8;
+    const spanX = Math.max(1, maxX - minX);
+    const spanY = Math.max(1, maxY - minY);
+    const scale = Math.min((88 - 2 * pad) / spanX, (88 - 2 * pad) / spanY);
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    const pointRadius = Math.max(0.7, Math.min(1.55, 9 / Math.sqrt(points.length)));
+    const maxDrawn = 1600;
+    const stride = Math.max(1, Math.ceil(points.length / maxDrawn));
+    let circles = "";
+
+    for (let i = 0; i < points.length; i += stride) {
+      const point = points[i];
+      const x = 44 + (point.x - centerX) * scale;
+      const y = 44 + (point.y - centerY) * scale;
+      circles += "<circle cx=\"" + x.toFixed(2) + "\" cy=\"" + y.toFixed(2) + "\" r=\"" + pointRadius.toFixed(2) + "\"></circle>";
+    }
+
+    return (
+      "<div class=\"benchmark-preview\">" +
+      "<svg viewBox=\"0 0 88 88\" aria-hidden=\"true\">" +
+      "<g fill=\"#2f3b52\" fill-opacity=\"0.72\">" + circles + "</g>" +
+      "</svg><span>" + title + "</span></div>"
+    );
+  }
+
   function squareDiskBenchmark(pointCount) {
     const n = Math.max(0, Math.floor(pointCount));
     if (squareDiskBenchmarkCache.has(n)) return squareDiskBenchmarkCache.get(n);
@@ -661,14 +712,22 @@
     const diskText = diskBenchmark
       ? (diskBenchmark.exact ? formatNumber(diskBenchmark.edges) : "paused")
       : "0";
+    const sidePreview = sideBenchmark
+      ? benchmarkPreview("side row", squareSidePoints(lensPoints, sideBenchmark))
+      : benchmarkPreview("side row", []);
+    const diskPreview = diskBenchmark && diskBenchmark.exact
+      ? benchmarkPreview("circular disk", squareDiskPoints(lensPoints))
+      : benchmarkPreview("circular disk", []);
 
     statusEl.innerHTML =
+      "<div class=\"status-grid\"><div>" +
       "<strong>" + field.label + "</strong><br>" +
       "visible points: <strong>" + formatNumber(lensPoints) + "</strong><br>" +
       "unit edges: <strong>" + lensEdgeText + "</strong><br>" +
       "field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong><br>" +
       "square lattice, side row: <strong>" + sideText + "</strong><br>" +
-      "square lattice, circular disk: <strong>" + diskText + "</strong>";
+      "square lattice, circular disk: <strong>" + diskText + "</strong>" +
+      "</div><div class=\"benchmark-previews\">" + sidePreview + diskPreview + "</div></div>";
   }
 
   let raf = 0;

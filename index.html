@@ -86,7 +86,8 @@
       position: fixed;
       right: 16px;
       bottom: 16px;
-      min-width: 260px;
+      min-width: 500px;
+      max-width: calc(100vw - 32px);
       padding: 10px 12px;
       background: var(--panel);
       border: 1px solid var(--panel-border);
@@ -102,6 +103,38 @@
     .status strong {
       color: var(--ink);
       font-weight: 650;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: minmax(190px, 1fr) auto;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .benchmark-previews {
+      display: flex;
+      gap: 8px;
+    }
+
+    .benchmark-preview {
+      width: 96px;
+      display: grid;
+      gap: 4px;
+      justify-items: center;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.1;
+      text-align: center;
+    }
+
+    .benchmark-preview svg {
+      width: 88px;
+      height: 88px;
+      display: block;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(20, 20, 20, 0.12);
+      border-radius: 6px;
     }
 
     button {
@@ -197,6 +230,14 @@
         order: 2;
         flex-basis: 100%;
         min-width: 0;
+      }
+
+      .status-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .benchmark-previews {
+        justify-content: flex-start;
       }
     }
   </style>
