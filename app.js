@@ -3,6 +3,7 @@
   const ctx = canvas.getContext("2d", { alpha: false });
   const toolbarEl = document.querySelector(".toolbar");
   const statusEl = document.getElementById("status");
+  const tooltipEl = document.getElementById("pointTooltip");
   const fieldSelect = document.getElementById("fieldSelect");
   const homeButton = document.getElementById("home");
   const zoomInButton = document.getElementById("zoomIn");
@@ -15,6 +16,10 @@
   const windowLabel = document.getElementById("windowLabel");
 
   const PHI = {
+    5: [1, 1, 1, 1, 1],
+    7: [1, 1, 1, 1, 1, 1, 1],
+    8: [1, 0, 0, 0, 1],
+    9: [1, 0, 0, 1, 0, 0, 1],
     12: [1, 0, -1, 0, 1],
     18: [1, 0, 0, -1, 0, 0, 1],
     24: [1, 0, 0, 0, -1, 0, 0, 0, 1],
@@ -23,34 +28,64 @@
 
   const FIELDS = [
     {
-      id: "erdos1105",
-      type: "integerNormGrid",
-      label: "Erdos grid m=1105",
-      shortLabel: "Z^2 / sqrt(1105)",
-      normSquared: 1105,
-      defaultLensWorldRadius: 1.25,
-      defaultWindow: 1105,
-      windowMin: 1105,
-      windowMax: 1105,
-      windowStep: 1,
-      pointFill: "#1f7665",
-      pointStroke: "rgba(18, 82, 71, 0.72)",
-      edgeStroke: "rgba(25, 112, 94, 0.2)"
+      id: "zeta5",
+      type: "cyclotomic",
+      label: "Q(zeta_5)",
+      shortLabel: "Z[zeta_5]",
+      m: 5,
+      defaultLensWorldRadius: 3,
+      defaultWindow: 2,
+      windowMin: 0.8,
+      windowMax: 5,
+      windowStep: 0.1,
+      pointFill: "#287c68",
+      pointStroke: "rgba(24, 91, 77, 0.72)",
+      edgeStroke: "rgba(23, 117, 96, 0.3)"
     },
     {
-      id: "erdos65",
-      type: "integerNormGrid",
-      label: "Erdos grid m=65",
-      shortLabel: "Z^2 / sqrt(65)",
-      normSquared: 65,
-      defaultLensWorldRadius: 2.5,
-      defaultWindow: 65,
-      windowMin: 65,
-      windowMax: 65,
-      windowStep: 1,
-      pointFill: "#2e6fa3",
-      pointStroke: "rgba(26, 79, 122, 0.72)",
-      edgeStroke: "rgba(35, 91, 140, 0.24)"
+      id: "zeta7",
+      type: "cyclotomic",
+      label: "Q(zeta_7)",
+      shortLabel: "Z[zeta_7]",
+      m: 7,
+      defaultLensWorldRadius: 1.6,
+      defaultWindow: 2.2,
+      windowMin: 0.8,
+      windowMax: 4,
+      windowStep: 0.1,
+      pointFill: "#9a5b33",
+      pointStroke: "rgba(117, 66, 35, 0.72)",
+      edgeStroke: "rgba(141, 80, 44, 0.3)"
+    },
+    {
+      id: "zeta8",
+      type: "cyclotomic",
+      label: "Q(zeta_8)",
+      shortLabel: "Z[zeta_8]",
+      m: 8,
+      defaultLensWorldRadius: 3,
+      defaultWindow: 2,
+      windowMin: 0.8,
+      windowMax: 5,
+      windowStep: 0.1,
+      pointFill: "#7a67b3",
+      pointStroke: "rgba(84, 69, 138, 0.72)",
+      edgeStroke: "rgba(92, 75, 156, 0.3)"
+    },
+    {
+      id: "zeta9",
+      type: "cyclotomic",
+      label: "Q(zeta_9)",
+      shortLabel: "Z[zeta_9]",
+      m: 9,
+      defaultLensWorldRadius: 1.4,
+      defaultWindow: 2.3,
+      windowMin: 0.8,
+      windowMax: 4,
+      windowStep: 0.1,
+      pointFill: "#b24f70",
+      pointStroke: "rgba(137, 52, 82, 0.72)",
+      edgeStroke: "rgba(166, 59, 93, 0.3)"
     },
     {
       id: "zeta12",
@@ -74,7 +109,7 @@
       shortLabel: "Z[zeta_18]",
       m: 18,
       defaultLensWorldRadius: 0.8,
-      defaultWindow: 3,
+      defaultWindow: 2.2,
       windowMin: 1,
       windowMax: 6,
       windowStep: 0.1,
@@ -89,7 +124,7 @@
       shortLabel: "Z[zeta_24]",
       m: 24,
       defaultLensWorldRadius: 0.4,
-      defaultWindow: 3,
+      defaultWindow: 2,
       windowMin: 1,
       windowMax: 6,
       windowStep: 0.1,
@@ -104,79 +139,18 @@
       shortLabel: "Z[zeta_30]",
       m: 30,
       defaultLensWorldRadius: 0.4,
-      defaultWindow: 3,
+      defaultWindow: 2,
       windowMin: 1,
       windowMax: 6,
       windowStep: 0.1,
       pointFill: "#5d74cf",
       pointStroke: "rgba(35, 54, 139, 0.7)",
       edgeStroke: "rgba(57, 84, 184, 0.28)"
-    },
-    {
-      id: "sawin0",
-      type: "multiquadratic",
-      label: "Ambient toy r=0",
-      shortLabel: "Z[i]",
-      primes: [],
-      defaultLensWorldRadius: 5,
-      defaultWindow: 1,
-      windowMin: 0.5,
-      windowMax: 4,
-      windowStep: 0.1,
-      pointFill: "#225f9c",
-      pointStroke: "rgba(25, 76, 128, 0.7)",
-      edgeStroke: "rgba(25, 76, 128, 0.32)"
-    },
-    {
-      id: "sawin1",
-      type: "multiquadratic",
-      label: "Ambient toy r=1",
-      shortLabel: "Z[i,sqrt3]",
-      primes: [3],
-      defaultLensWorldRadius: 5,
-      defaultWindow: 2.5,
-      windowMin: 0.3,
-      windowMax: 4,
-      windowStep: 0.1,
-      pointFill: "#8f5b2c",
-      pointStroke: "rgba(103, 61, 25, 0.72)",
-      edgeStroke: "rgba(116, 74, 33, 0.3)"
-    },
-    {
-      id: "sawin2",
-      type: "multiquadratic",
-      label: "Ambient toy r=2",
-      shortLabel: "Z[i,sqrt3,sqrt5]",
-      primes: [3, 5],
-      defaultLensWorldRadius: 5,
-      defaultWindow: 2.5,
-      windowMin: 0.2,
-      windowMax: 3,
-      windowStep: 0.1,
-      pointFill: "#6d6fb7",
-      pointStroke: "rgba(64, 66, 139, 0.72)",
-      edgeStroke: "rgba(72, 76, 160, 0.28)"
-    },
-    {
-      id: "sawin3",
-      type: "multiquadratic",
-      label: "Ambient toy r=3",
-      shortLabel: "Z[i,sqrt3,sqrt5,sqrt7]",
-      primes: [3, 5, 7],
-      defaultLensWorldRadius: 5,
-      defaultWindow: 2.5,
-      windowMin: 0.2,
-      windowMax: 5,
-      windowStep: 0.1,
-      pointFill: "#b35478",
-      pointStroke: "rgba(130, 50, 83, 0.72)",
-      edgeStroke: "rgba(158, 58, 96, 0.28)"
     }
   ];
 
   const fieldById = new Map(FIELDS.map((field) => [field.id, field]));
   const embeddingGeometryCache = new Map();
-  const multiquadraticRealGeometryCache = new Map();
   const squareDiskBenchmarkCache = new Map();
   const UNIT_DISTANCE_SQUARED = 1;
   const UNIT_DISTANCE_TOLERANCE = 1e-8;
@@ -184,8 +158,6 @@
   const DATA_BUFFER_LINEAR_FACTOR = Math.sqrt(DATA_BUFFER_AREA_FACTOR);
   const DATA_BUFFER_EXTRA_WORLD = 1.25;
   const MAX_DYNAMIC_CANDIDATES = 8000000;
-  const MAX_MULTIQ_SCALAR_CANDIDATES = 1000000;
-  const MAX_INTEGER_GRID_POINTS = 60000;
 
   const state = {
     width: 1,
@@ -194,8 +166,8 @@
     centerX: 0,
     centerY: 0,
     scale: 80,
-    fieldId: "erdos1105",
-    windowRadius: 1105,
+    fieldId: "zeta5",
+    windowRadius: 2,
     showEdges: true,
     showPoints: true,
     showGrid: true,
@@ -204,7 +176,8 @@
     lastY: 0,
     autoFitPending: false,
     dirty: true,
-    dataset: null
+    dataset: null,
+    hoverPoint: null
   };
 
   function gcd(a, b) {
@@ -248,70 +221,12 @@
     });
   }
 
-  function multiquadraticEmbeddingValues(primes) {
-    const level = primes.length;
-    const realDegree = 1 << level;
-    const degree = 2 * realDegree;
-    const roots = primes.map((prime) => Math.sqrt(prime));
-    const basisValues = [];
-
-    for (let mask = 0; mask < realDegree; mask += 1) {
-      let value = 1;
-      for (let bit = 0; bit < level; bit += 1) {
-        if (mask & (1 << bit)) {
-          value *= roots[bit];
-        }
-      }
-      basisValues.push(value);
-    }
-
-    const embeddings = [];
-    for (let signMask = 0; signMask < realDegree; signMask += 1) {
-      const powers = new Array(degree);
-      for (let mask = 0; mask < realDegree; mask += 1) {
-        let value = basisValues[mask];
-        for (let bit = 0; bit < level; bit += 1) {
-          if ((mask & (1 << bit)) && (signMask & (1 << bit))) {
-            value = -value;
-          }
-        }
-        powers[mask] = { re: value, im: 0 };
-        powers[realDegree + mask] = { re: 0, im: value };
-      }
-      embeddings.push(powers);
-    }
-
-    return embeddings;
-  }
-
   function fieldDegree(field) {
-    if (field.type === "multiquadratic") {
-      return 2 * (1 << field.primes.length);
-    }
     return PHI[field.m].length - 1;
   }
 
   function fieldEmbeddingValues(field) {
-    if (field.type === "multiquadratic") {
-      return multiquadraticEmbeddingValues(field.primes);
-    }
     return embeddingValues(field.m);
-  }
-
-  function multiquadraticRealGeometry(field) {
-    if (multiquadraticRealGeometryCache.has(field.id)) {
-      return multiquadraticRealGeometryCache.get(field.id);
-    }
-
-    const realDegree = 1 << field.primes.length;
-    const embeddings = fieldEmbeddingValues(field);
-    const matrix = embeddings.map((powers) => powers.slice(0, realDegree).map((power) => power.re));
-    const geometry = {
-      matrix,
-      inverse: invertMatrix(matrix)
-    };
-    multiquadraticRealGeometryCache.set(field.id, geometry);
-    return geometry;
   }
 
   function invertMatrix(matrix) {
@@ -442,79 +357,26 @@
   }
 
   function datasetPlan(field, windowRadius, viewBounds) {
-    const factors = [DATA_BUFFER_LINEAR_FACTOR, 2.5, 2, 1.6, 1.3, 1.1, 1];
+    const degree = fieldDegree(field);
+    const factors = degree >= 8
+      ? [1.6, 1.3, 1.1, 1]
+      : [DATA_BUFFER_LINEAR_FACTOR, 2.5, 2, 1.6, 1.3, 1.1, 1];
+    const extraWorld = degree >= 8 ? 0.1 : DATA_BUFFER_EXTRA_WORLD;
     let fallback = null;
-    const maxCandidates = field.type === "integerNormGrid"
-      ? MAX_INTEGER_GRID_POINTS
-      : (field.type === "multiquadratic" ? MAX_MULTIQ_SCALAR_CANDIDATES : MAX_DYNAMIC_CANDIDATES);
 
     for (const factor of factors) {
-      const bounds = expandBounds(viewBounds, factor, DATA_BUFFER_EXTRA_WORLD);
-      let ranges = null;
-      let candidateCount = 0;
-      if (field.type === "integerNormGrid") {
-        candidateCount = integerGridPlanCandidateCount(field, bounds);
-      } else if (field.type === "multiquadratic") {
-        candidateCount = multiquadraticPlanCandidateCount(field, windowRadius, bounds);
-      } else {
-        const rangeInfo = coefficientRangesForRegion(field, windowRadius, bounds);
-        ranges = rangeInfo.ranges;
-        candidateCount = rangeInfo.candidateCount;
-      }
+      const bounds = expandBounds(viewBounds, factor, extraWorld);
+      const { ranges, candidateCount } = coefficientRangesForRegion(field, windowRadius, bounds);
       const plan = { bounds, ranges, candidateCount };
       if (!fallback || candidateCount < fallback.candidateCount) {
         fallback = plan;
       }
-      if (candidateCount <= maxCandidates) {
+      if (candidateCount <= MAX_DYNAMIC_CANDIDATES) {
         return plan;
       }
     }
 
     return fallback;
-  }
-
-  function multiquadraticPlanCandidateCount(field, windowRadius, bounds) {
-    const xRanges = scalarRangesForMultiquadratic(
-      field,
-      { min: bounds.xMin, max: bounds.xMax },
-      windowRadius
-    );
-    const yRanges = scalarRangesForMultiquadratic(
-      field,
-      { min: bounds.yMin, max: bounds.yMax },
-      windowRadius
-    );
-    return xRanges.candidateCount + yRanges.candidateCount;
-  }
-
-  function integerGridIndexBounds(field, bounds) {
-    const scale = Math.sqrt(field.normSquared);
-    return {
-      ixMin: Math.ceil(bounds.xMin * scale - 1e-9),
-      ixMax: Math.floor(bounds.xMax * scale + 1e-9),
-      iyMin: Math.ceil(bounds.yMin * scale - 1e-9),
-      iyMax: Math.floor(bounds.yMax * scale + 1e-9)
-    };
-  }
-
-  function integerGridPlanCandidateCount(field, bounds) {
-    const gridBounds = integerGridIndexBounds(field, bounds);
-    return Math.max(0, gridBounds.ixMax - gridBounds.ixMin + 1) *
-      Math.max(0, gridBounds.iyMax - gridBounds.iyMin + 1);
-  }
-
-  function integerNormDirections(normSquared) {
-    const directions = [];
-    const limit = Math.floor(Math.sqrt(normSquared));
-    for (let a = -limit; a <= limit; a += 1) {
-      for (let b = -limit; b <= limit; b += 1) {
-        if (a * a + b * b !== normSquared) continue;
-        if (a > 0 || (a === 0 && b > 0)) {
-          directions.push([a, b]);
-        }
-      }
-    }
-    return directions;
   }
 
   function isUnitDistance(p, q) {
@@ -562,207 +424,7 @@
     return edges;
   }
 
-  function scalarRangesForMultiquadratic(field, scalarBounds, windowRadius) {
-    const realDegree = 1 << field.primes.length;
-    const geometry = multiquadraticRealGeometry(field);
-    const intervals = [[scalarBounds.min, scalarBounds.max]];
-    for (let i = 1; i < realDegree; i += 1) {
-      intervals.push([-windowRadius, windowRadius]);
-    }
-
-    const ranges = [];
-    let candidateCount = 1;
-    for (let coeffIndex = 0; coeffIndex < realDegree; coeffIndex += 1) {
-      let minValue = 0;
-      let maxValue = 0;
-      for (let row = 0; row < realDegree; row += 1) {
-        const coefficient = geometry.inverse[coeffIndex][row];
-        const low = intervals[row][0];
-        const high = intervals[row][1];
-        if (coefficient >= 0) {
-          minValue += coefficient * low;
-          maxValue += coefficient * high;
-        } else {
-          minValue += coefficient * high;
-          maxValue += coefficient * low;
-        }
-      }
-
-      const min = Math.floor(minValue - 1e-9);
-      const max = Math.ceil(maxValue + 1e-9);
-      const size = Math.max(0, max - min + 1);
-      ranges.push({ min, max, size });
-      candidateCount *= size;
-    }
-
-    return { ranges, candidateCount };
-  }
-
-  function enumerateMultiquadraticScalars(field, scalarBounds, windowRadius) {
-    const realDegree = 1 << field.primes.length;
-    const geometry = multiquadraticRealGeometry(field);
-    const { ranges, candidateCount } = scalarRangesForMultiquadratic(field, scalarBounds, windowRadius);
-    const coeffs = new Array(realDegree).fill(0);
-    const values = new Array(realDegree).fill(0);
-    const candidates = [];
-
-    for (let code = 0; code < candidateCount; code += 1) {
-      let value = code;
-      for (let i = 0; i < realDegree; i += 1) {
-        coeffs[i] = ranges[i].min + (value % ranges[i].size);
-        value = Math.floor(value / ranges[i].size);
-      }
-
-      let accepted = true;
-      for (let row = 0; row < realDegree; row += 1) {
-        let embedded = 0;
-        for (let col = 0; col < realDegree; col += 1) {
-          embedded += coeffs[col] * geometry.matrix[row][col];
-        }
-        values[row] = embedded;
-        if (row === 0) {
-          if (embedded < scalarBounds.min - 1e-9 || embedded > scalarBounds.max + 1e-9) {
-            accepted = false;
-            break;
-          }
-        } else if (Math.abs(embedded) > windowRadius + 1e-9) {
-          accepted = false;
-          break;
-        }
-      }
-
-      if (accepted) {
-        candidates.push(values.slice());
-      }
-    }
-
-    return { candidates, candidateCount };
-  }
-
-  function buildMultiquadraticDataset(field, windowRadius, plan) {
-    const started = performance.now();
-    const xSearch = enumerateMultiquadraticScalars(
-      field,
-      { min: plan.bounds.xMin, max: plan.bounds.xMax },
-      windowRadius
-    );
-    const ySearch = enumerateMultiquadraticScalars(
-      field,
-      { min: plan.bounds.yMin, max: plan.bounds.yMax },
-      windowRadius
-    );
-    const points = [];
-    const windowRadiusSquared = windowRadius * windowRadius;
-    let pairTests = 0;
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-
-    for (const xCandidate of xSearch.candidates) {
-      const remaining = [];
-      let possible = true;
-      for (let i = 1; i < xCandidate.length; i += 1) {
-        const room = windowRadiusSquared - xCandidate[i] * xCandidate[i];
-        if (room < -1e-9) {
-          possible = false;
-          break;
-        }
-        remaining.push(room);
-      }
-      if (!possible) continue;
-
-      for (const yCandidate of ySearch.candidates) {
-        pairTests += 1;
-        let accepted = true;
-        for (let i = 1; i < yCandidate.length; i += 1) {
-          if (yCandidate[i] * yCandidate[i] > remaining[i - 1] + 1e-9) {
-            accepted = false;
-            break;
-          }
-        }
-        if (!accepted) continue;
-
-        const x = xCandidate[0];
-        const y = yCandidate[0];
-        points.push({ x, y });
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x);
-        maxY = Math.max(maxY, y);
-      }
-    }
-
-    const edges = buildUnitDistanceEdges(points);
-    return {
-      field,
-      windowRadius,
-      points,
-      edges,
-      queryBounds: plan.bounds,
-      candidateCount: xSearch.candidateCount + ySearch.candidateCount + pairTests,
-      bounds: { minX, minY, maxX, maxY },
-      buildMs: performance.now() - started,
-      exactPhysicalCrop: false
-    };
-  }
-
-  function buildIntegerNormGridDataset(field, plan) {
-    const started = performance.now();
-    const gridBounds = integerGridIndexBounds(field, plan.bounds);
-    const scale = Math.sqrt(field.normSquared);
-    const points = [];
-    const index = new Map();
-    const keyFor = (ix, iy) => ix + "," + iy;
-
-    for (let iy = gridBounds.iyMin; iy <= gridBounds.iyMax; iy += 1) {
-      for (let ix = gridBounds.ixMin; ix <= gridBounds.ixMax; ix += 1) {
-        const point = { x: ix / scale, y: iy / scale, ix, iy };
-        index.set(keyFor(ix, iy), points.length);
-        points.push(point);
-      }
-    }
-
-    const directions = integerNormDirections(field.normSquared);
-    const edges = [];
-    for (let i = 0; i < points.length; i += 1) {
-      const point = points[i];
-      for (const [dx, dy] of directions) {
-        const j = index.get(keyFor(point.ix + dx, point.iy + dy));
-        if (j !== undefined) {
-          edges.push([i, j]);
-        }
-      }
-    }
-
-    return {
-      field,
-      windowRadius: field.normSquared,
-      points,
-      edges,
-      queryBounds: plan.bounds,
-      candidateCount: points.length * Math.max(1, directions.length),
-      bounds: {
-        minX: gridBounds.ixMin / scale,
-        minY: gridBounds.iyMin / scale,
-        maxX: gridBounds.ixMax / scale,
-        maxY: gridBounds.iyMax / scale
-      },
-      buildMs: performance.now() - started,
-      exactPhysicalCrop: true,
-      unitDirections: directions.length
-    };
-  }
-
   function buildDataset(field, windowRadius, plan) {
-    if (field.type === "integerNormGrid") {
-      return buildIntegerNormGridDataset(field, plan);
-    }
-
-    if (field.type === "multiquadratic") {
-      return buildMultiquadraticDataset(field, windowRadius, plan);
-    }
-
     const started = performance.now();
     const degree = fieldDegree(field);
     const total = plan.candidateCount;
@@ -815,7 +477,7 @@
       }
 
       if (accepted) {
-        points.push({ x, y });
+        points.push({ x, y, coeffs: coeffs.slice() });
         minX = Math.min(minX, x);
         minY = Math.min(minY, y);
         maxX = Math.max(maxX, x);
@@ -888,6 +550,128 @@
 
   function formatNumber(value) {
     return Math.round(value).toLocaleString();
+  }
+
+  function formatZetaPower(field, power) {
+    if (power === 1) return "zeta_" + field.m;
+    return "zeta_" + field.m + "^" + power;
+  }
+
+  function formatCyclotomicInteger(field, coeffs) {
+    const terms = [];
+    for (let i = 0; i < coeffs.length; i += 1) {
+      const coefficient = coeffs[i];
+      if (coefficient === 0) continue;
+
+      const magnitude = Math.abs(coefficient);
+      let body = "";
+      if (i === 0) {
+        body = String(magnitude);
+      } else {
+        const basis = formatZetaPower(field, i);
+        body = magnitude === 1 ? basis : magnitude + " " + basis;
+      }
+
+      terms.push({
+        sign: coefficient < 0 ? "-" : "+",
+        body
+      });
+    }
+
+    if (!terms.length) return "0";
+
+    let expression = terms[0].sign === "-" ? "- " + terms[0].body : terms[0].body;
+    for (let i = 1; i < terms.length; i += 1) {
+      expression += " " + terms[i].sign + " " + terms[i].body;
+    }
+    return expression;
+  }
+
+  function tooltipHitRadius() {
+    const pointRadius = Math.max(0.85, Math.min(3.8, state.scale * 0.018));
+    return Math.max(7, pointRadius + 5);
+  }
+
+  function nearestPointAt(sx, sy) {
+    const dataset = state.dataset;
+    if (!dataset || !state.showPoints || state.dragging) return null;
+
+    const field = currentField();
+    if (field.type !== "cyclotomic") return null;
+
+    const world = screenToWorld(sx, sy);
+    const maxWorldDistance = tooltipHitRadius() / state.scale;
+    const maxWorldDistanceSquared = maxWorldDistance * maxWorldDistance;
+    let nearest = null;
+    let nearestDistanceSquared = maxWorldDistanceSquared;
+
+    for (const point of dataset.points) {
+      const dx = point.x - world.x;
+      if (Math.abs(dx) > maxWorldDistance) continue;
+      const dy = point.y - world.y;
+      if (Math.abs(dy) > maxWorldDistance) continue;
+      const distanceSquared = dx * dx + dy * dy;
+      if (distanceSquared <= nearestDistanceSquared) {
+        nearest = point;
+        nearestDistanceSquared = distanceSquared;
+      }
+    }
+
+    return nearest;
+  }
+
+  function hidePointTooltip() {
+    state.hoverPoint = null;
+    if (!tooltipEl) return;
+    tooltipEl.classList.remove("visible");
+    tooltipEl.setAttribute("aria-hidden", "true");
+  }
+
+  function positionPointTooltip(sx, sy) {
+    if (!tooltipEl) return;
+    const margin = 12;
+    const offset = 14;
+    const width = tooltipEl.offsetWidth;
+    const height = tooltipEl.offsetHeight;
+    let left = sx + offset;
+    let top = sy + offset;
+
+    if (left + width + margin > state.width) {
+      left = sx - width - offset;
+    }
+    if (top + height + margin > state.height) {
+      top = sy - height - offset;
+    }
+
+    left = Math.max(margin, Math.min(state.width - width - margin, left));
+    top = Math.max(margin, Math.min(state.height - height - margin, top));
+    tooltipEl.style.transform = "translate(" + Math.round(left) + "px, " + Math.round(top) + "px)";
+  }
+
+  function updatePointTooltip(event) {
+    if (!tooltipEl) return;
+
+    const point = nearestPointAt(event.clientX, event.clientY);
+    if (!point || !point.coeffs) {
+      hidePointTooltip();
+      return;
+    }
+
+    if (state.hoverPoint !== point) {
+      const field = currentField();
+      const fieldEl = document.createElement("div");
+      const expressionEl = document.createElement("div");
+      fieldEl.className = "tooltip-field";
+      expressionEl.className = "tooltip-expression";
+      fieldEl.textContent = field.shortLabel;
+      expressionEl.textContent = formatCyclotomicInteger(field, point.coeffs);
+      tooltipEl.replaceChildren(fieldEl, expressionEl);
+      state.hoverPoint = point;
+    }
+
+    tooltipEl.classList.add("visible");
+    tooltipEl.setAttribute("aria-hidden", "false");
+    positionPointTooltip(event.clientX, event.clientY);
   }
 
   function squareDiskPoints(pointCount) {
@@ -1241,24 +1025,19 @@
     const diskPreview = diskBenchmark && diskBenchmark.exact
       ? benchmarkPreview("circular disk", squareDiskPoints(lensPoints))
       : benchmarkPreview("circular disk", []);
-    const directionText = dataset.unitDirections
-      ? "unit directions: <strong>" + formatNumber(dataset.unitDirections) + "</strong><br>"
-      : "";
 
     statusEl.innerHTML =
       "<div class=\"status-grid\"><div>" +
       "<strong>" + field.label + "</strong><br>" +
       "visible points: <strong>" + formatNumber(lensPoints) + "</strong><br>" +
       "unit edges: <strong>" + lensEdgeText + "</strong><br>" +
-      directionText +
       "field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong><br>" +
       "square lattice, circular disk: <strong>" + diskText + "</strong>" +
       "</div><div class=\"benchmark-previews\">" + diskPreview + "</div></div>";
     statusEl.title =
       "computed viewport patch: " + formatNumber(points.length) + " points, " +
       formatNumber(edges.length) + " unit edges from " +
-      formatNumber(dataset.candidateCount) + " candidates" +
-      (dataset.unitDirections ? "; " + dataset.unitDirections + " undirected unit directions" : "");
+      formatNumber(dataset.candidateCount) + " coefficient candidates";
 
     if (state.autoFitPending) {
       state.autoFitPending = false;
@@ -1282,24 +1061,22 @@
 
   function setField(fieldId) {
     const field = fieldById.get(fieldId) || FIELDS[0];
+    hidePointTooltip();
     state.fieldId = field.id;
     state.windowRadius = field.defaultWindow;
     windowInput.min = String(field.windowMin);
     windowInput.max = String(field.windowMax);
     windowInput.step = String(field.windowStep);
     windowInput.value = String(field.defaultWindow);
-    windowInput.disabled = field.type === "integerNormGrid";
-    windowLabel.textContent = field.type === "integerNormGrid"
-      ? "m " + field.normSquared
-      : "W " + state.windowRadius.toFixed(1);
+    windowInput.disabled = false;
+    windowLabel.textContent = "W " + state.windowRadius.toFixed(1);
     fieldSelect.value = field.id;
     state.dataset = null;
     fitInitial();
   }
 
   function updateWindowRadius() {
-    const field = currentField();
-    if (field.type === "integerNormGrid") return;
+    hidePointTooltip();
     state.windowRadius = Number(windowInput.value);
     windowLabel.textContent = "W " + state.windowRadius.toFixed(1);
     state.dataset = null;
@@ -1319,6 +1096,7 @@
 
   canvas.addEventListener("pointerdown", (event) => {
     canvas.setPointerCapture(event.pointerId);
+    hidePointTooltip();
     state.dragging = true;
     state.lastX = event.clientX;
     state.lastY = event.clientY;
@@ -1326,7 +1104,10 @@
   });
 
   canvas.addEventListener("pointermove", (event) => {
-    if (!state.dragging) return;
+    if (!state.dragging) {
+      updatePointTooltip(event);
+      return;
+    }
     const dx = event.clientX - state.lastX;
     const dy = event.clientY - state.lastY;
     state.lastX = event.clientX;
@@ -1341,15 +1122,22 @@
     state.dragging = false;
     canvas.releasePointerCapture(event.pointerId);
     canvas.classList.remove("dragging");
+    updatePointTooltip(event);
   });
 
   canvas.addEventListener("pointercancel", () => {
     state.dragging = false;
     canvas.classList.remove("dragging");
+    hidePointTooltip();
+  });
+
+  canvas.addEventListener("pointerleave", () => {
+    if (!state.dragging) hidePointTooltip();
   });
 
   canvas.addEventListener("wheel", (event) => {
     event.preventDefault();
+    hidePointTooltip();
     zoomAt(event.clientX, event.clientY, Math.exp(-event.deltaY * 0.001));
   }, { passive: false });
 
@@ -1366,6 +1154,7 @@
   pointsButton.addEventListener("click", () => {
     state.showPoints = !state.showPoints;
     pointsButton.classList.toggle("active", state.showPoints);
+    if (!state.showPoints) hidePointTooltip();
     state.dirty = true;
     requestDraw();
   });
@@ -1377,7 +1166,6 @@
   });
   windowInput.addEventListener("change", updateWindowRadius);
   windowInput.addEventListener("input", () => {
-    if (currentField().type === "integerNormGrid") return;
     windowLabel.textContent = "W " + Number(windowInput.value).toFixed(1);
   });
   saveButton.addEventListener("click", () => {
