@@ -24,6 +24,7 @@
   const FIELDS = [
     {
       id: "zeta12",
+      type: "cyclotomic",
       label: "Q(zeta_12)",
       shortLabel: "Z[zeta_12]",
       m: 12,
@@ -38,6 +39,7 @@
     },
     {
       id: "zeta18",
+      type: "cyclotomic",
       label: "Q(zeta_18)",
       shortLabel: "Z[zeta_18]",
       m: 18,
@@ -52,6 +54,7 @@
     },
     {
       id: "zeta24",
+      type: "cyclotomic",
       label: "Q(zeta_24)",
       shortLabel: "Z[zeta_24]",
       m: 24,
@@ -66,6 +69,7 @@
     },
     {
       id: "zeta30",
+      type: "cyclotomic",
       label: "Q(zeta_30)",
       shortLabel: "Z[zeta_30]",
       m: 30,
@@ -77,11 +81,72 @@
       pointFill: "#5d74cf",
       pointStroke: "rgba(35, 54, 139, 0.7)",
       edgeStroke: "rgba(57, 84, 184, 0.28)"
+    },
+    {
+      id: "sawin0",
+      type: "multiquadratic",
+      label: "Sawin ambient r=0",
+      shortLabel: "Z[i]",
+      primes: [],
+      defaultLensWorldRadius: 5,
+      defaultWindow: 1,
+      windowMin: 0.5,
+      windowMax: 4,
+      windowStep: 0.1,
+      pointFill: "#225f9c",
+      pointStroke: "rgba(25, 76, 128, 0.7)",
+      edgeStroke: "rgba(25, 76, 128, 0.32)"
+    },
+    {
+      id: "sawin1",
+      type: "multiquadratic",
+      label: "Sawin ambient r=1",
+      shortLabel: "Z[i,sqrt3]",
+      primes: [3],
+      defaultLensWorldRadius: 5,
+      defaultWindow: 3,
+      windowMin: 0.3,
+      windowMax: 4,
+      windowStep: 0.1,
+      pointFill: "#8f5b2c",
+      pointStroke: "rgba(103, 61, 25, 0.72)",
+      edgeStroke: "rgba(116, 74, 33, 0.3)"
+    },
+    {
+      id: "sawin2",
+      type: "multiquadratic",
+      label: "Sawin ambient r=2",
+      shortLabel: "Z[i,sqrt3,sqrt5]",
+      primes: [3, 5],
+      defaultLensWorldRadius: 5,
+      defaultWindow: 3,
+      windowMin: 0.2,
+      windowMax: 3,
+      windowStep: 0.1,
+      pointFill: "#6d6fb7",
+      pointStroke: "rgba(64, 66, 139, 0.72)",
+      edgeStroke: "rgba(72, 76, 160, 0.28)"
+    },
+    {
+      id: "sawin3",
+      type: "multiquadratic",
+      label: "Sawin ambient r=3",
+      shortLabel: "Z[i,sqrt3,sqrt5,sqrt7]",
+      primes: [3, 5, 7],
+      defaultLensWorldRadius: 5,
+      defaultWindow: 3,
+      windowMin: 0.2,
+      windowMax: 5,
+      windowStep: 0.1,
+      pointFill: "#b35478",
+      pointStroke: "rgba(130, 50, 83, 0.72)",
+      edgeStroke: "rgba(158, 58, 96, 0.28)"
     }
   ];
 
   const fieldById = new Map(FIELDS.map((field) => [field.id, field]));
   const embeddingGeometryCache = new Map();
+  const multiquadraticRealGeometryCache = new Map();
   const squareDiskBenchmarkCache = new Map();
   const UNIT_DISTANCE_SQUARED = 1;
   const UNIT_DISTANCE_TOLERANCE = 1e-8;
@@ -151,6 +216,72 @@
     });
   }
 
+  function multiquadraticEmbeddingValues(primes) {
+    const level = primes.length;
+    const realDegree = 1 << level;
+    const degree = 2 * realDegree;
+    const roots = primes.map((prime) => Math.sqrt(prime));
+    const basisValues = [];
+
+    for (let mask = 0; mask < realDegree; mask += 1) {
+      let value = 1;
+      for (let bit = 0; bit < level; bit += 1) {
+        if (mask & (1 << bit)) {
+          value *= roots[bit];
+        }
+      }
+      basisValues.push(value);
+    }
+
+    const embeddings = [];
+    for (let signMask = 0; signMask < realDegree; signMask += 1) {
+      const powers = new Array(degree);
+      for (let mask = 0; mask < realDegree; mask += 1) {
+        let value = basisValues[mask];
+        for (let bit = 0; bit < level; bit += 1) {
+          if ((mask & (1 << bit)) && (signMask & (1 << bit))) {
+            value = -value;
+          }
+        }
+        powers[mask] = { re: value, im: 0 };
+        powers[realDegree + mask] = { re: 0, im: value };
+      }
+      embeddings.push(powers);
+    }
+
+    return embeddings;
+  }
+
+  function fieldDegree(field) {
+    if (field.type === "multiquadratic") {
+      return 2 * (1 << field.primes.length);
+    }
+    return PHI[field.m].length - 1;
+  }
+
+  function fieldEmbeddingValues(field) {
+    if (field.type === "multiquadratic") {
+      return multiquadraticEmbeddingValues(field.primes);
+    }
+    return embeddingValues(field.m);
+  }
+
+  function multiquadraticRealGeometry(field) {
+    if (multiquadraticRealGeometryCache.has(field.id)) {
+      return multiquadraticRealGeometryCache.get(field.id);
+    }
+
+    const realDegree = 1 << field.primes.length;
+    const embeddings = fieldEmbeddingValues(field);
+    const matrix = embeddings.map((powers) => powers.slice(0, realDegree).map((power) => power.re));
+    const geometry = {
+      matrix,
+      inverse: invertMatrix(matrix)
+    };
+    multiquadraticRealGeometryCache.set(field.id, geometry);
+    return geometry;
+  }
+
   function invertMatrix(matrix) {
     const n = matrix.length;
     const augmented = matrix.map((row, rowIndex) => {
@@ -200,7 +331,7 @@
   function embeddingGeometry(field) {
     if (embeddingGeometryCache.has(field.id)) return embeddingGeometryCache.get(field.id);
 
-    const embeddings = embeddingValues(field.m);
+    const embeddings = fieldEmbeddingValues(field);
     const matrix = [];
     for (const powers of embeddings) {
       matrix.push(powers.map((power) => power.re));
@@ -239,7 +370,7 @@
   }
 
   function coefficientRangesForRegion(field, windowRadius, physicalBounds) {
-    const degree = PHI[field.m].length - 1;
+    const degree = fieldDegree(field);
     const geometry = embeddingGeometry(field);
     const intervals = [
       [physicalBounds.xMin, physicalBounds.xMax],
@@ -284,7 +415,15 @@
 
     for (const factor of factors) {
       const bounds = expandBounds(viewBounds, factor, DATA_BUFFER_EXTRA_WORLD);
-      const { ranges, candidateCount } = coefficientRangesForRegion(field, windowRadius, bounds);
+      let ranges = null;
+      let candidateCount = 0;
+      if (field.type === "multiquadratic") {
+        candidateCount = multiquadraticPlanCandidateCount(field, windowRadius, bounds);
+      } else {
+        const rangeInfo = coefficientRangesForRegion(field, windowRadius, bounds);
+        ranges = rangeInfo.ranges;
+        candidateCount = rangeInfo.candidateCount;
+      }
       const plan = { bounds, ranges, candidateCount };
       if (!fallback || candidateCount < fallback.candidateCount) {
         fallback = plan;
@@ -295,6 +434,20 @@
     }
 
     return fallback;
+  }
+
+  function multiquadraticPlanCandidateCount(field, windowRadius, bounds) {
+    const xRanges = scalarRangesForMultiquadratic(
+      field,
+      { min: bounds.xMin, max: bounds.xMax },
+      windowRadius
+    );
+    const yRanges = scalarRangesForMultiquadratic(
+      field,
+      { min: bounds.yMin, max: bounds.yMax },
+      windowRadius
+    );
+    return xRanges.candidateCount + yRanges.candidateCount;
   }
 
   function isUnitDistance(p, q) {
@@ -342,9 +495,158 @@
     return edges;
   }
 
-  function buildDataset(field, windowRadius, plan) {
+  function scalarRangesForMultiquadratic(field, scalarBounds, windowRadius) {
+    const realDegree = 1 << field.primes.length;
+    const geometry = multiquadraticRealGeometry(field);
+    const intervals = [[scalarBounds.min, scalarBounds.max]];
+    for (let i = 1; i < realDegree; i += 1) {
+      intervals.push([-windowRadius, windowRadius]);
+    }
+
+    const ranges = [];
+    let candidateCount = 1;
+    for (let coeffIndex = 0; coeffIndex < realDegree; coeffIndex += 1) {
+      let minValue = 0;
+      let maxValue = 0;
+      for (let row = 0; row < realDegree; row += 1) {
+        const coefficient = geometry.inverse[coeffIndex][row];
+        const low = intervals[row][0];
+        const high = intervals[row][1];
+        if (coefficient >= 0) {
+          minValue += coefficient * low;
+          maxValue += coefficient * high;
+        } else {
+          minValue += coefficient * high;
+          maxValue += coefficient * low;
+        }
+      }
+
+      const min = Math.floor(minValue - 1e-9);
+      const max = Math.ceil(maxValue + 1e-9);
+      const size = Math.max(0, max - min + 1);
+      ranges.push({ min, max, size });
+      candidateCount *= size;
+    }
+
+    return { ranges, candidateCount };
+  }
+
+  function enumerateMultiquadraticScalars(field, scalarBounds, windowRadius) {
+    const realDegree = 1 << field.primes.length;
+    const geometry = multiquadraticRealGeometry(field);
+    const { ranges, candidateCount } = scalarRangesForMultiquadratic(field, scalarBounds, windowRadius);
+    const coeffs = new Array(realDegree).fill(0);
+    const values = new Array(realDegree).fill(0);
+    const candidates = [];
+
+    for (let code = 0; code < candidateCount; code += 1) {
+      let value = code;
+      for (let i = 0; i < realDegree; i += 1) {
+        coeffs[i] = ranges[i].min + (value % ranges[i].size);
+        value = Math.floor(value / ranges[i].size);
+      }
+
+      let accepted = true;
+      for (let row = 0; row < realDegree; row += 1) {
+        let embedded = 0;
+        for (let col = 0; col < realDegree; col += 1) {
+          embedded += coeffs[col] * geometry.matrix[row][col];
+        }
+        values[row] = embedded;
+        if (row === 0) {
+          if (embedded < scalarBounds.min - 1e-9 || embedded > scalarBounds.max + 1e-9) {
+            accepted = false;
+            break;
+          }
+        } else if (Math.abs(embedded) > windowRadius + 1e-9) {
+          accepted = false;
+          break;
+        }
+      }
+
+      if (accepted) {
+        candidates.push(values.slice());
+      }
+    }
+
+    return { candidates, candidateCount };
+  }
+
+  function buildMultiquadraticDataset(field, windowRadius, plan) {
     const started = performance.now();
-    const degree = PHI[field.m].length - 1;
+    const xSearch = enumerateMultiquadraticScalars(
+      field,
+      { min: plan.bounds.xMin, max: plan.bounds.xMax },
+      windowRadius
+    );
+    const ySearch = enumerateMultiquadraticScalars(
+      field,
+      { min: plan.bounds.yMin, max: plan.bounds.yMax },
+      windowRadius
+    );
+    const points = [];
+    const windowRadiusSquared = windowRadius * windowRadius;
+    let pairTests = 0;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    for (const xCandidate of xSearch.candidates) {
+      const remaining = [];
+      let possible = true;
+      for (let i = 1; i < xCandidate.length; i += 1) {
+        const room = windowRadiusSquared - xCandidate[i] * xCandidate[i];
+        if (room < -1e-9) {
+          possible = false;
+          break;
+        }
+        remaining.push(room);
+      }
+      if (!possible) continue;
+
+      for (const yCandidate of ySearch.candidates) {
+        pairTests += 1;
+        let accepted = true;
+        for (let i = 1; i < yCandidate.length; i += 1) {
+          if (yCandidate[i] * yCandidate[i] > remaining[i - 1] + 1e-9) {
+            accepted = false;
+            break;
+          }
+        }
+        if (!accepted) continue;
+
+        const x = xCandidate[0];
+        const y = yCandidate[0];
+        points.push({ x, y });
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+
+    const edges = buildUnitDistanceEdges(points);
+    return {
+      field,
+      windowRadius,
+      points,
+      edges,
+      queryBounds: plan.bounds,
+      candidateCount: xSearch.candidateCount + ySearch.candidateCount + pairTests,
+      bounds: { minX, minY, maxX, maxY },
+      buildMs: performance.now() - started,
+      exactPhysicalCrop: false
+    };
+  }
+
+  function buildDataset(field, windowRadius, plan) {
+    if (field.type === "multiquadratic") {
+      return buildMultiquadraticDataset(field, windowRadius, plan);
+    }
+
+    const started = performance.now();
+    const degree = fieldDegree(field);
     const total = plan.candidateCount;
     const embeddings = embeddingGeometry(field).embeddings;
     const internalRadiusSquared = windowRadius * windowRadius;
