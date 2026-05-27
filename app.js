@@ -23,6 +23,36 @@
 
   const FIELDS = [
     {
+      id: "erdos1105",
+      type: "integerNormGrid",
+      label: "Erdos grid m=1105",
+      shortLabel: "Z^2 / sqrt(1105)",
+      normSquared: 1105,
+      defaultLensWorldRadius: 1.25,
+      defaultWindow: 1105,
+      windowMin: 1105,
+      windowMax: 1105,
+      windowStep: 1,
+      pointFill: "#1f7665",
+      pointStroke: "rgba(18, 82, 71, 0.72)",
+      edgeStroke: "rgba(25, 112, 94, 0.2)"
+    },
+    {
+      id: "erdos65",
+      type: "integerNormGrid",
+      label: "Erdos grid m=65",
+      shortLabel: "Z^2 / sqrt(65)",
+      normSquared: 65,
+      defaultLensWorldRadius: 2.5,
+      defaultWindow: 65,
+      windowMin: 65,
+      windowMax: 65,
+      windowStep: 1,
+      pointFill: "#2e6fa3",
+      pointStroke: "rgba(26, 79, 122, 0.72)",
+      edgeStroke: "rgba(35, 91, 140, 0.24)"
+    },
+    {
       id: "zeta12",
       type: "cyclotomic",
       label: "Q(zeta_12)",
@@ -85,7 +115,7 @@
     {
       id: "sawin0",
       type: "multiquadratic",
-      label: "Sawin ambient r=0",
+      label: "Ambient toy r=0",
       shortLabel: "Z[i]",
       primes: [],
       defaultLensWorldRadius: 5,
@@ -100,7 +130,7 @@
     {
       id: "sawin1",
       type: "multiquadratic",
-      label: "Sawin ambient r=1",
+      label: "Ambient toy r=1",
       shortLabel: "Z[i,sqrt3]",
       primes: [3],
       defaultLensWorldRadius: 5,
@@ -115,7 +145,7 @@
     {
       id: "sawin2",
       type: "multiquadratic",
-      label: "Sawin ambient r=2",
+      label: "Ambient toy r=2",
       shortLabel: "Z[i,sqrt3,sqrt5]",
       primes: [3, 5],
       defaultLensWorldRadius: 5,
@@ -130,7 +160,7 @@
     {
       id: "sawin3",
       type: "multiquadratic",
-      label: "Sawin ambient r=3",
+      label: "Ambient toy r=3",
       shortLabel: "Z[i,sqrt3,sqrt5,sqrt7]",
       primes: [3, 5, 7],
       defaultLensWorldRadius: 5,
@@ -155,6 +185,7 @@
   const DATA_BUFFER_EXTRA_WORLD = 1.25;
   const MAX_DYNAMIC_CANDIDATES = 8000000;
   const MAX_MULTIQ_SCALAR_CANDIDATES = 1000000;
+  const MAX_INTEGER_GRID_POINTS = 60000;
 
   const state = {
     width: 1,
@@ -163,8 +194,8 @@
     centerX: 0,
     centerY: 0,
     scale: 80,
-    fieldId: "zeta12",
-    windowRadius: 4,
+    fieldId: "erdos1105",
+    windowRadius: 1105,
     showEdges: true,
     showPoints: true,
     showGrid: true,
@@ -413,13 +444,17 @@
   function datasetPlan(field, windowRadius, viewBounds) {
     const factors = [DATA_BUFFER_LINEAR_FACTOR, 2.5, 2, 1.6, 1.3, 1.1, 1];
     let fallback = null;
-    const maxCandidates = field.type === "multiquadratic" ? MAX_MULTIQ_SCALAR_CANDIDATES : MAX_DYNAMIC_CANDIDATES;
+    const maxCandidates = field.type === "integerNormGrid"
+      ? MAX_INTEGER_GRID_POINTS
+      : (field.type === "multiquadratic" ? MAX_MULTIQ_SCALAR_CANDIDATES : MAX_DYNAMIC_CANDIDATES);
 
     for (const factor of factors) {
       const bounds = expandBounds(viewBounds, factor, DATA_BUFFER_EXTRA_WORLD);
       let ranges = null;
       let candidateCount = 0;
-      if (field.type === "multiquadratic") {
+      if (field.type === "integerNormGrid") {
+        candidateCount = integerGridPlanCandidateCount(field, bounds);
+      } else if (field.type === "multiquadratic") {
         candidateCount = multiquadraticPlanCandidateCount(field, windowRadius, bounds);
       } else {
         const rangeInfo = coefficientRangesForRegion(field, windowRadius, bounds);
@@ -450,6 +485,36 @@
       windowRadius
     );
     return xRanges.candidateCount + yRanges.candidateCount;
+  }
+
+  function integerGridIndexBounds(field, bounds) {
+    const scale = Math.sqrt(field.normSquared);
+    return {
+      ixMin: Math.ceil(bounds.xMin * scale - 1e-9),
+      ixMax: Math.floor(bounds.xMax * scale + 1e-9),
+      iyMin: Math.ceil(bounds.yMin * scale - 1e-9),
+      iyMax: Math.floor(bounds.yMax * scale + 1e-9)
+    };
+  }
+
+  function integerGridPlanCandidateCount(field, bounds) {
+    const gridBounds = integerGridIndexBounds(field, bounds);
+    return Math.max(0, gridBounds.ixMax - gridBounds.ixMin + 1) *
+      Math.max(0, gridBounds.iyMax - gridBounds.iyMin + 1);
+  }
+
+  function integerNormDirections(normSquared) {
+    const directions = [];
+    const limit = Math.floor(Math.sqrt(normSquared));
+    for (let a = -limit; a <= limit; a += 1) {
+      for (let b = -limit; b <= limit; b += 1) {
+        if (a * a + b * b !== normSquared) continue;
+        if (a > 0 || (a === 0 && b > 0)) {
+          directions.push([a, b]);
+        }
+      }
+    }
+    return directions;
   }
 
   function isUnitDistance(p, q) {
@@ -642,7 +707,58 @@
     };
   }
 
+  function buildIntegerNormGridDataset(field, plan) {
+    const started = performance.now();
+    const gridBounds = integerGridIndexBounds(field, plan.bounds);
+    const scale = Math.sqrt(field.normSquared);
+    const points = [];
+    const index = new Map();
+    const keyFor = (ix, iy) => ix + "," + iy;
+
+    for (let iy = gridBounds.iyMin; iy <= gridBounds.iyMax; iy += 1) {
+      for (let ix = gridBounds.ixMin; ix <= gridBounds.ixMax; ix += 1) {
+        const point = { x: ix / scale, y: iy / scale, ix, iy };
+        index.set(keyFor(ix, iy), points.length);
+        points.push(point);
+      }
+    }
+
+    const directions = integerNormDirections(field.normSquared);
+    const edges = [];
+    for (let i = 0; i < points.length; i += 1) {
+      const point = points[i];
+      for (const [dx, dy] of directions) {
+        const j = index.get(keyFor(point.ix + dx, point.iy + dy));
+        if (j !== undefined) {
+          edges.push([i, j]);
+        }
+      }
+    }
+
+    return {
+      field,
+      windowRadius: field.normSquared,
+      points,
+      edges,
+      queryBounds: plan.bounds,
+      candidateCount: points.length * Math.max(1, directions.length),
+      bounds: {
+        minX: gridBounds.ixMin / scale,
+        minY: gridBounds.iyMin / scale,
+        maxX: gridBounds.ixMax / scale,
+        maxY: gridBounds.iyMax / scale
+      },
+      buildMs: performance.now() - started,
+      exactPhysicalCrop: true,
+      unitDirections: directions.length
+    };
+  }
+
   function buildDataset(field, windowRadius, plan) {
+    if (field.type === "integerNormGrid") {
+      return buildIntegerNormGridDataset(field, plan);
+    }
+
     if (field.type === "multiquadratic") {
       return buildMultiquadraticDataset(field, windowRadius, plan);
     }
@@ -1125,19 +1241,24 @@
     const diskPreview = diskBenchmark && diskBenchmark.exact
       ? benchmarkPreview("circular disk", squareDiskPoints(lensPoints))
       : benchmarkPreview("circular disk", []);
+    const directionText = dataset.unitDirections
+      ? "unit directions: <strong>" + formatNumber(dataset.unitDirections) + "</strong><br>"
+      : "";
 
     statusEl.innerHTML =
       "<div class=\"status-grid\"><div>" +
       "<strong>" + field.label + "</strong><br>" +
       "visible points: <strong>" + formatNumber(lensPoints) + "</strong><br>" +
       "unit edges: <strong>" + lensEdgeText + "</strong><br>" +
+      directionText +
       "field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong><br>" +
       "square lattice, circular disk: <strong>" + diskText + "</strong>" +
       "</div><div class=\"benchmark-previews\">" + diskPreview + "</div></div>";
     statusEl.title =
       "computed viewport patch: " + formatNumber(points.length) + " points, " +
       formatNumber(edges.length) + " unit edges from " +
-      formatNumber(dataset.candidateCount) + " coefficient candidates";
+      formatNumber(dataset.candidateCount) + " candidates" +
+      (dataset.unitDirections ? "; " + dataset.unitDirections + " undirected unit directions" : "");
 
     if (state.autoFitPending) {
       state.autoFitPending = false;
@@ -1167,7 +1288,10 @@
     windowInput.max = String(field.windowMax);
     windowInput.step = String(field.windowStep);
     windowInput.value = String(field.defaultWindow);
-    windowLabel.textContent = "W " + state.windowRadius.toFixed(1);
+    windowInput.disabled = field.type === "integerNormGrid";
+    windowLabel.textContent = field.type === "integerNormGrid"
+      ? "m " + field.normSquared
+      : "W " + state.windowRadius.toFixed(1);
     fieldSelect.value = field.id;
     state.dataset = null;
     fitInitial();
@@ -1175,6 +1299,7 @@
 
   function updateWindowRadius() {
     const field = currentField();
+    if (field.type === "integerNormGrid") return;
     state.windowRadius = Number(windowInput.value);
     windowLabel.textContent = "W " + state.windowRadius.toFixed(1);
     state.dataset = null;
@@ -1252,6 +1377,7 @@
   });
   windowInput.addEventListener("change", updateWindowRadius);
   windowInput.addEventListener("input", () => {
+    if (currentField().type === "integerNormGrid") return;
     windowLabel.textContent = "W " + Number(windowInput.value).toFixed(1);
   });
   saveButton.addEventListener("click", () => {
