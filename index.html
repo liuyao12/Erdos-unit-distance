@@ -169,7 +169,7 @@
       position: fixed;
       right: 16px;
       bottom: 16px;
-      min-width: 400px;
+      min-width: 450px;
       max-width: calc(100vw - 32px);
       padding: 10px 12px;
       background: var(--panel);
@@ -188,38 +188,195 @@
       font-weight: 650;
     }
 
-    .status-grid {
+    .status-top {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 88px;
-      gap: 10px;
-      align-items: start;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
     }
 
-    .benchmark-previews {
+    .status-meta {
+      min-width: 0;
+    }
+
+    .distance-race {
+      display: grid;
+      gap: 5px;
+      margin: 7px 0 7px;
+    }
+
+    .race-heading {
       display: flex;
-      width: 88px;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
     }
 
-    .benchmark-preview {
-      width: 88px;
+    .race-heading strong {
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .race-row {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(168px, 1fr) minmax(82px, 0.8fr) 58px;
+      gap: 7px;
+      align-items: center;
+      min-height: 18px;
+      padding: 2px 5px;
+      font-variant-numeric: tabular-nums;
+      border: 1px solid transparent;
+      border-radius: 5px;
+      cursor: pointer;
+      transition:
+        transform 320ms cubic-bezier(0.2, 0.9, 0.2, 1),
+        opacity 220ms ease,
+        background 180ms ease,
+        border-color 180ms ease,
+        box-shadow 180ms ease;
+      will-change: transform;
+    }
+
+    .race-row:hover {
+      background: rgba(20, 20, 20, 0.035);
+    }
+
+    .race-row:focus-visible {
+      outline: 2px solid rgba(36, 54, 216, 0.32);
+      outline-offset: 2px;
+    }
+
+    .race-row.entering {
+      opacity: 0;
+      transform: translateY(8px) scale(0.985);
+    }
+
+    .race-row.selected {
+      border-color: var(--race-color, #6f7f93);
+      background: rgba(255, 255, 255, 0.72);
+      box-shadow:
+        inset 0 0 0 1px var(--race-color, #6f7f93),
+        0 1px 6px rgba(20, 20, 20, 0.07);
+    }
+
+    .race-label {
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+      min-width: 0;
+      overflow: hidden;
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 650;
+      line-height: 1.1;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .race-exact {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .race-decimal {
+      flex: 0 0 auto;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .race-track {
+      height: 7px;
+      overflow: hidden;
+      background: rgba(20, 20, 20, 0.11);
+      border-radius: 7px;
+    }
+
+    .race-fill {
       display: block;
+      height: 100%;
+      background: var(--race-color, #6f7f93);
+      border-radius: 7px;
+      transition: width 260ms cubic-bezier(0.2, 0.9, 0.2, 1), background-color 180ms ease;
     }
 
-    .benchmark-preview svg {
-      width: 88px;
-      height: 88px;
-      display: block;
-      background: rgba(255, 255, 255, 0.7);
-      border: 1px solid rgba(20, 20, 20, 0.12);
-      border-radius: 6px;
+    .race-row.leader .race-fill {
+      box-shadow: 0 0 0 1px rgba(20, 20, 20, 0.08);
     }
 
-    .comparison-label {
-      display: inline;
+    .race-row.unit .race-label::after {
+      content: "unit";
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: rgba(36, 54, 216, 0.08);
+      color: var(--blue);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0;
     }
 
-    .comparison-value {
-      display: inline;
+    .race-count {
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.1;
+      text-align: right;
+    }
+
+    .race-note {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    .shown-distance {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 3px;
+      min-width: 94px;
+      max-width: 118px;
+      margin: 0;
+      padding: 5px 6px;
+      background: rgba(255, 255, 255, 0.64);
+      border: 1px solid rgba(20, 20, 20, 0.09);
+      border-radius: 5px;
+      box-shadow: inset 2px 0 0 var(--race-color, #6f7f93);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .shown-distance.selected {
+      border-color: rgba(20, 20, 20, 0.14);
+    }
+
+    .shown-label {
+      flex: 0 0 auto;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .shown-distance .race-label {
+      justify-content: flex-end;
+      gap: 4px;
+      max-width: 100%;
+      font-size: 10px;
+      text-align: right;
+    }
+
+    .shown-distance .race-decimal {
+      display: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .race-row,
+      .race-fill {
+        transition: none;
+      }
     }
 
     .point-tooltip {
@@ -258,6 +415,14 @@
     .tooltip-expression {
       font: 600 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
       overflow-wrap: anywhere;
+    }
+
+    .tooltip-note {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.15;
     }
 
     button {
@@ -369,10 +534,6 @@
         min-width: 0;
       }
 
-      .status-grid {
-        grid-template-columns: minmax(0, 1fr) 88px;
-      }
-
     }
   </style>
 </head>
@@ -394,7 +555,7 @@
     <button id="zoomOut" title="Zoom out" aria-label="Zoom out">
       <svg viewBox="0 0 24 24"><path d="M5 12h14"></path></svg>
     </button>
-    <button id="edges" class="active" title="Toggle unit distances" aria-label="Toggle unit distances">
+    <button id="edges" class="active" title="Toggle leader-distance edges" aria-label="Toggle leader-distance edges">
       <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2"></circle><circle cx="18" cy="6" r="2"></circle><circle cx="12" cy="18" r="2"></circle><path d="M8 6h8"></path><path d="m7 8 4 8"></path><path d="m17 8-4 8"></path></svg>
     </button>
     <button id="points" class="active" title="Toggle points" aria-label="Toggle points">
@@ -413,6 +574,6 @@
   </div>
 
   <div class="status" id="status"></div>
-  <script src="app.js?v=20260528-lens-centered-zoom" defer></script>
+  <script src="app.js?v=20260528-distance-colors" defer></script>
 </body>
 </html>

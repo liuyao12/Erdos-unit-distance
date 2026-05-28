@@ -1,92 +1,57 @@
-# Erdos Unit Distance: Dodecagonal Cut-and-Project Explorer
+# Cyclotomic Point-Set Explorer
 
-Interactive browser explorer for the 12-fold symmetric point set that came up while looking at a low-dimensional toy version of recent unit-distance constructions.
+Interactive browser explorer for planar point sets obtained from rings of cyclotomic integers and simple cut-and-project windows.
 
 [Open the interactive explorer](https://liuyao12.github.io/Erdos-unit-distance/)
 
-![Screenshot of the dodecagonal cut-and-project explorer](docs/screenshot.jpg)
+![Screenshot of the cyclotomic point-set explorer](docs/screenshot.png)
 
-The interactive page is entirely browser-side JavaScript. Viewing or using it does not require Python, a local server, or a build step.
-
-This project was created entirely by Codex with GPT-5.5 Pro.
+The page is entirely browser-side JavaScript. Viewing or using it does not require Python, a local server, or a build step.
 
 ## What It Draws
 
-The hosted page is a static JavaScript app. It reconstructs the visible part of the infinite model set
+Choose a cyclotomic field from the dropdown:
+
+- `Q(i)` and `Q(ζ_3)` draw the full planar lattices `Z[i]` and `Z[ζ_3]`.
+- `Q(ζ_m)` for higher-degree fields draws a finite visible patch of a cut-and-project point set from `Z[ζ_m]`.
+
+For a selected `m`, each element is represented in the power basis
 
 $$
-\Lambda_W=\{z\in\mathbb{Z}[\zeta_{12}]: |z^\star|\le W\}.
+z=a_0+a_1\zeta_m+\cdots+a_{\varphi(m)-1}\zeta_m^{\varphi(m)-1}.
 $$
 
-Writing $\rho=\exp(2\pi i/3)$, a point is represented by four integers:
+The canvas uses the first complex embedding as physical space. For fields with additional complex embeddings, the app keeps only points whose internal embeddings lie inside radius-`W` disks. This window makes the projected point set locally finite; projecting the whole higher-dimensional ring without a window would be dense.
+
+## Distance Edges
+
+The circular lens defines the finite point set currently being measured. Inside that lens, the app counts all pair distances, groups equal distances by the exact cyclotomic coefficient vector for
 
 $$
-z=a+bi+c\rho+di\rho,
-\qquad
-z^\star=a-bi+c\rho-di\rho .
+\Delta z\,\overline{\Delta z},
 $$
 
-The canvas draws the physical coordinate $z$, while $z^\star$ is the internal-space coordinate used for the cut-and-project window. Keeping $|z^\star|\le W$ and projecting $z$ gives a locally finite dodecagonal model set. Projecting the whole 4D lattice without the window would be dense.
+and shows a live distance race. Rows animate into their new order as pan and zoom change the lens. Labels show decimal distance, plus an exact `√k` label when `d²` is an integer.
 
-## Unit Edges
+The canvas draws edges for the current race leader, with color tied to the active distance. Clicking a race row pins that distance until the row is clicked again or another distance is selected. Unit distance appears in the race even when it is not the leader. Hovering a point shows its element in the selected ring and highlights the active distance edges incident to that point.
 
-The blue segments are all visible pairs at physical distance $1$. In this $\mathbb{Z}[\zeta_{12}]$ case, the only coefficient differences with $|\Delta z|=1$ are the 12 root-of-unity directions, so the JavaScript checks those finite neighbor steps instead of doing an all-pairs search.
-
-The optional Python scripts are probes used to verify and reproduce the same construction. They are not used by the GitHub Pages app; the interactive page itself only needs `index.html` and `app.js`.
+This is an illustration tool for cyclotomic point sets. It is not trying to beat, compare with, or reproduce the Erdős square-lattice construction.
 
 ## Controls
 
 - Home button: center the viewport back at the origin while preserving zoom.
 - Drag to pan.
 - Mouse wheel or trackpad scroll to zoom.
-- Use the toolbar to zoom, toggle unit edges/grid, change the internal window radius, or export a PNG.
-
-## Metrics
-
-The status panel reports only the current visible comparison:
-
-- visible points `n`.
-- visible unit distances `m`.
-- the number of equal-distance pairs obtained by arranging the same `n` points in a square lattice and rescaling the most common lattice distance to length 1.
-
-For a finite set $P\subset\mathbb R^2$, the relevant count is
-
-$$
-u(P)=\left|\{\{p,q\}\subset P: |p-q|=1\}\right|.
-$$
-
-The unit-distance problem asks how large
-
-$$
-U(n)=\max_{|P|=n} u(P)
-$$
-
-can be. The square-lattice count shown in the panel is a direct comparison with the classic Erdos grid construction at the same screen-visible $n$; it is a benchmark, not the unknown true optimum $U(n)$.
-
-## Projection Knobs
-
-For this particular reconstruction, the cyclotomic lattice and the two embeddings are fixed:
-
-$$
-\mathbb{Z}[\zeta_{12}]\longrightarrow \mathbb C_{\mathrm{phys}}\times \mathbb C_{\mathrm{int}},
-\qquad
-z\longmapsto (z,z^\star).
-$$
-
-So the 12-fold symmetry and the unit-neighbor directions are rigid. The app exposes one natural knob: the window radius $W$ in $|z^\star|\le W$. Increasing $W$ lets more lattice points through and makes the visible point set denser; decreasing $W$ makes a thinner, sparser patch. This changes the accepted slice of the lattice, not the projection direction.
-
-Other legitimate variants would translate the internal window, change its shape, or replace the number field/embedding pair. Those are different model sets rather than merely a different view of this one.
+- Use the toolbar to change fields, toggle leader-distance edges, toggle points/grid, change the internal window radius, or export a PNG.
 
 ## Files
 
-- `index.html` - GitHub Pages entry point.
-- `app.js` - self-contained JavaScript reconstruction, drawing, interaction, and visible-edge counting.
-- `docs/screenshot.jpg` - README preview screenshot of the interactive app.
-- `dodecagonal_probe.py` - reconstructs the original radius-4 screenshot-style patch and writes an SVG.
-- `reconstruct_12fold.py` - writes a clean static SVG reconstruction.
-- `model_set_window_probe.py` - verifies the model-set interpretation and unit-difference classes.
-- `growth_probe.py` - checks that fixed 4D/window growth has linear unit-edge density.
+- `index.html` - GitHub Pages entry point and UI styles.
+- `app.js` - self-contained cyclotomic reconstruction, drawing, interaction, exact distance grouping, and visible-edge counting.
+- `docs/screenshot.png` - README preview screenshot.
+- `dodecagonal_probe.py`, `reconstruct_12fold.py`, `model_set_window_probe.py`, and `growth_probe.py` - exploratory Python probes for earlier 12-fold and model-set checks.
+- `finite_comparison.html` and `finite_comparison.js` - older auxiliary finite point-set page, separate from the main cyclotomic explorer.
 
 ## Mathematical Context
 
-This 4D example is a cut-and-project dodecagonal model set, closely related to standard 12-fold quasicrystal and square-triangle tiling constructions. It should not be confused with the full asymptotic unit-distance theorem, whose proof uses projected lattices from number fields of growing degree.
+The app is a visual sandbox for rings such as `Z[i]`, `Z[ζ_3]`, `Z[ζ_5]`, and related cut-and-project model sets. It helps inspect repeated distances, local density, and the geometry of visible patches across different cyclotomic fields. It should not be read as a proof experiment for the asymptotic Erdős unit-distance problem.
