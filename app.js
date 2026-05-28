@@ -53,10 +53,11 @@
     {
       id: "eisenstein",
       type: "cyclotomic",
-      label: "Q(omega)",
-      shortLabel: "Z[omega]",
-      generator: "ω",
-      relationText: "Z[ω], ω³ = 1",
+      label: "Q(zeta_3)",
+      shortLabel: "Z[zeta_3]",
+      generator: "ζ",
+      generatorHtml: "ζ<sub>3</sub>",
+      relationText: "Z[ζ], ζ³ = 1",
       m: 3,
       fullRing: true,
       defaultLensWorldRadius: 7.5,
@@ -193,13 +194,27 @@
   const fieldById = new Map(FIELDS.map((field) => [field.id, field]));
   const embeddingGeometryCache = new Map();
   const rootPowerCoefficientCache = new Map();
-  const squareDiskBenchmarkCache = new Map();
   const UNIT_DISTANCE_SQUARED = 1;
   const UNIT_DISTANCE_TOLERANCE = 1e-8;
   const DATA_BUFFER_AREA_FACTOR = 10;
   const DATA_BUFFER_LINEAR_FACTOR = Math.sqrt(DATA_BUFFER_AREA_FACTOR);
   const DATA_BUFFER_EXTRA_WORLD = 1.25;
   const MAX_DYNAMIC_CANDIDATES = 8000000;
+  const DISTANCE_RACE_PAIR_LIMIT = 1600000;
+  const DISTANCE_RACE_ROWS = 6;
+  const DISTANCE_KEY_SCALE = 1000000;
+  const DISTANCE_COLORS = [
+    "#f0a000",
+    "#2f66ff",
+    "#00a982",
+    "#e34b85",
+    "#8b5cff",
+    "#ff6b35",
+    "#14b8c5",
+    "#d64b08",
+    "#25a244",
+    "#c026d3"
+  ];
 
   const state = {
     width: 1,
@@ -219,7 +234,8 @@
     autoFitPending: false,
     dirty: true,
     dataset: null,
-    hoverPoint: null
+    hoverPoint: null,
+    selectedDistanceKey: null
   };
 
   function gcd(a, b) {
@@ -595,6 +611,154 @@
     return Math.round(value).toLocaleString();
   }
 
+  function distanceKey(distanceSquared) {
+    return String(Math.round(distanceSquared * DISTANCE_KEY_SCALE));
+  }
+
+  function distanceSquaredFromKey(key) {
+    return Number(key) / DISTANCE_KEY_SCALE;
+  }
+
+  function positiveMod(value, modulus) {
+    return ((value % modulus) + modulus) % modulus;
+  }
+
+  function coefficientKey(coeffs) {
+    return coeffs.join(",");
+  }
+
+  function coefficientsFromKey(key) {
+    return key.startsWith("alg:")
+      ? key.slice(4).split(",").map((value) => Number(value))
+      : null;
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function escapeAttribute(value) {
+    return escapeHtml(value).replace(/'/g, "&#39;");
+  }
+
+  function clamp(min, value, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function colorWithAlpha(color, alpha) {
+    if (!color || color[0] !== "#" || (color.length !== 7 && color.length !== 4)) {
+      return color || "rgba(240, 160, 0, " + alpha + ")";
+    }
+    const full = color.length === 4
+      ? "#" + color[1] + color[1] + color[2] + color[2] + color[3] + color[3]
+      : color;
+    const r = parseInt(full.slice(1, 3), 16);
+    const g = parseInt(full.slice(3, 5), 16);
+    const b = parseInt(full.slice(5, 7), 16);
+    return "rgba(" + r + ", " + g + ", " + b + ", " + alpha + ")";
+  }
+
+  function hashString(value) {
+    let hash = 2166136261;
+    for (let i = 0; i < value.length; i += 1) {
+      hash ^= value.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
+  }
+
+  function distanceColor(row) {
+    if (!row) return DISTANCE_COLORS[0];
+    return DISTANCE_COLORS[hashString(row.key) % DISTANCE_COLORS.length];
+  }
+
+  function leaderEdgeStroke(row, alpha) {
+    return colorWithAlpha(distanceColor(row), alpha);
+  }
+
+  function leaderEdgeLineWidth(multiplier) {
+    const base = Math.pow(Math.max(1, state.scale) / 80, 0.9);
+    return clamp(0.14 * multiplier, base * multiplier, 2.4 * multiplier);
+  }
+
+  function canonicalDifferenceKey(coeffs) {
+    let sign = 1;
+    for (const coefficient of coeffs) {
+      if (coefficient < 0) {
+        sign = -1;
+        break;
+      }
+      if (coefficient > 0) break;
+    }
+    return coeffs.map((coefficient) => sign * coefficient).join(",");
+  }
+
+  function squaredDistanceCoefficientKey(field, diffCoeffs) {
+    const degree = fieldDegree(field);
+    const coeffs = new Array(degree).fill(0);
+
+    for (let i = 0; i < degree; i += 1) {
+      const left = diffCoeffs[i];
+      if (!left) continue;
+      for (let j = 0; j < degree; j += 1) {
+        const right = diffCoeffs[j];
+        if (!right) continue;
+        const scale = left * right;
+        const power = positiveMod(i - j, field.m);
+        const reduced = reducePowerCoefficients(field, power);
+        for (let k = 0; k < degree; k += 1) {
+          coeffs[k] += scale * reduced[k];
+        }
+      }
+    }
+
+    return "alg:" + coefficientKey(coeffs);
+  }
+
+  function unitDistanceCoefficientKey(field) {
+    const coeffs = new Array(fieldDegree(field)).fill(0);
+    coeffs[0] = 1;
+    return "alg:" + coefficientKey(coeffs);
+  }
+
+  function pairDistanceRaceKey(field, p, q, approximateDistanceSquared, cache) {
+    if (!p.coeffs || !q.coeffs || p.coeffs.length !== q.coeffs.length) {
+      return "num:" + distanceKey(approximateDistanceSquared);
+    }
+
+    const diffCoeffs = new Array(p.coeffs.length);
+    for (let i = 0; i < p.coeffs.length; i += 1) {
+      diffCoeffs[i] = p.coeffs[i] - q.coeffs[i];
+    }
+
+    const diffKey = canonicalDifferenceKey(diffCoeffs);
+    let squaredKey = cache.get(diffKey);
+    if (!squaredKey) {
+      squaredKey = squaredDistanceCoefficientKey(field, diffCoeffs);
+      cache.set(diffKey, squaredKey);
+    }
+    return squaredKey;
+  }
+
+  function formatDistanceSquared(value) {
+    const nearestInteger = Math.round(value);
+    if (Math.abs(value - nearestInteger) < 1e-6) return String(nearestInteger);
+    const decimals = value < 10 ? 3 : value < 100 ? 2 : 1;
+    return value.toFixed(decimals).replace(/\.?0+$/, "");
+  }
+
+  function formatDistanceDecimal(distanceSquared) {
+    const distance = Math.sqrt(Math.max(0, distanceSquared));
+    const nearestInteger = Math.round(distance);
+    if (Math.abs(distance - nearestInteger) < 1e-6) return String(nearestInteger);
+    const decimals = distance < 10 ? 4 : distance < 100 ? 3 : 2;
+    return distance.toFixed(decimals).replace(/\.?0+$/, "");
+  }
+
   function superscriptNumber(value) {
     const digits = {
       "-": "⁻",
@@ -613,7 +777,7 @@
   }
 
   function formatZetaPower(field, power) {
-    const generator = field.generator || "ζ";
+    const generator = field.id === "gaussian" ? "i" : "ζ";
     if (power === 1) return generator;
     return generator + superscriptNumber(power);
   }
@@ -648,13 +812,57 @@
     return expression;
   }
 
+  function plainIntegerCoefficient(coeffs) {
+    if (!coeffs || !coeffs.length) return null;
+    for (let i = 1; i < coeffs.length; i += 1) {
+      if (coeffs[i] !== 0) return null;
+    }
+    return coeffs[0];
+  }
+
+  function exactDistanceText(field, row) {
+    const coeffs = coefficientsFromKey(row.key);
+    if (!coeffs) return null;
+
+    const integerValue = plainIntegerCoefficient(coeffs);
+    if (integerValue !== null && integerValue >= 0) {
+      const root = Math.sqrt(integerValue);
+      if (Math.abs(root - Math.round(root)) < 1e-9) return String(Math.round(root));
+      return "√" + String(integerValue);
+    }
+
+    return null;
+  }
+
+  function distanceLabelHtml(field, row) {
+    const exact = exactDistanceText(field, row);
+    const decimal = formatDistanceDecimal(row.distanceSquared);
+    const decimalText = "≈ " + decimal;
+    const title = (exact ? "d = " + exact + " " : "d ") + decimalText + "; d^2 = " + formatDistanceSquared(row.distanceSquared);
+    if (!exact) {
+      return "<span class=\"race-exact\" title=\"" + escapeAttribute(title) + "\">" +
+        escapeHtml("d " + decimalText) + "</span>";
+    }
+
+    const exactHtml = escapeHtml("d = " + exact);
+    return (
+      "<span class=\"race-exact\" title=\"" + escapeAttribute(title) + "\">" + exactHtml + "</span>" +
+      "<span class=\"race-decimal\">" + escapeHtml(decimalText) + "</span>"
+    );
+  }
+
   function formatFieldLabelHtml(field) {
-    const generator = field.generator || "ζ<sub>" + field.m + "</sub>";
+    const generator = field.generatorHtml || field.generator || "ζ<sub>" + field.m + "</sub>";
     return "<span class=\"field-label\"><strong>Q</strong>(" + generator + ")</span>";
   }
 
   function fieldRelationText(field) {
     return field.relationText || "Z[ζ], ζ" + superscriptNumber(field.m) + " = 1";
+  }
+
+  function zetaDefinitionText(field) {
+    if (field.id === "gaussian") return "i = √-1";
+    return "ζ = exp(2πi/" + field.m + ")";
   }
 
   function reducePowerCoefficients(field, power) {
@@ -742,10 +950,16 @@
   }
 
   function hidePointTooltip() {
+    const hadHoverPoint = Boolean(state.hoverPoint);
     state.hoverPoint = null;
-    if (!tooltipEl) return;
-    tooltipEl.classList.remove("visible");
-    tooltipEl.setAttribute("aria-hidden", "true");
+    if (tooltipEl) {
+      tooltipEl.classList.remove("visible");
+      tooltipEl.setAttribute("aria-hidden", "true");
+    }
+    if (hadHoverPoint) {
+      state.dirty = true;
+      requestDraw();
+    }
   }
 
   function positionPointTooltip(sx, sy) {
@@ -778,16 +992,19 @@
       return;
     }
 
-    if (state.hoverPoint !== point) {
+    const hoverChanged = state.hoverPoint !== point;
+    if (hoverChanged) {
       const field = currentField();
-      const fieldEl = document.createElement("div");
       const expressionEl = document.createElement("div");
-      fieldEl.className = "tooltip-field";
+      const noteEl = document.createElement("div");
       expressionEl.className = "tooltip-expression";
-      fieldEl.textContent = fieldRelationText(field);
+      noteEl.className = "tooltip-note";
       expressionEl.textContent = formatCyclotomicInteger(field, point.coeffs);
-      tooltipEl.replaceChildren(fieldEl, expressionEl);
+      noteEl.textContent = zetaDefinitionText(field);
+      tooltipEl.replaceChildren(expressionEl, noteEl);
       state.hoverPoint = point;
+      state.dirty = true;
+      requestDraw();
     }
 
     tooltipEl.classList.add("visible");
@@ -795,106 +1012,161 @@
     positionPointTooltip(event.clientX, event.clientY);
   }
 
-  function squareDiskPoints(pointCount) {
-    if (pointCount <= 0) return [];
-    const radius = Math.ceil(Math.sqrt(pointCount / Math.PI)) + 3;
-    const points = [];
-    for (let y = -radius; y <= radius; y += 1) {
-      for (let x = -radius; x <= radius; x += 1) {
-        points.push({ x, y, distSquared: x * x + y * y });
+  function buildDistanceRace(field, points, pointIndices, selectedKey) {
+    const n = pointIndices.length;
+    const pairCount = n * (n - 1) / 2;
+    if (n < 2) {
+      return { exact: true, pointCount: n, pairCount, rows: [], unitCount: 0, leader: null };
+    }
+    if (pairCount > DISTANCE_RACE_PAIR_LIMIT) {
+      return { exact: false, pointCount: n, pairCount, rows: [], unitCount: null, leader: null };
+    }
+
+    const counts = new Map();
+    const keyCache = new Map();
+    for (let a = 0; a < n; a += 1) {
+      const p = points[pointIndices[a]];
+      for (let b = a + 1; b < n; b += 1) {
+        const q = points[pointIndices[b]];
+        const dx = p.x - q.x;
+        const dy = p.y - q.y;
+        const distanceSquared = dx * dx + dy * dy;
+        const key = pairDistanceRaceKey(field, p, q, distanceSquared, keyCache);
+        let entry = counts.get(key);
+        if (!entry) {
+          entry = {
+            key,
+            distanceSquared,
+            count: 0,
+            rank: 0
+          };
+          counts.set(key, entry);
+        }
+        entry.count += 1;
       }
     }
-    points.sort((a, b) => (
-      a.distSquared - b.distSquared ||
-      Math.abs(a.y) - Math.abs(b.y) ||
-      Math.abs(a.x) - Math.abs(b.x) ||
-      a.y - b.y ||
-      a.x - b.x
+
+    const entries = Array.from(counts.values()).sort((a, b) => (
+      b.count - a.count ||
+      a.distanceSquared - b.distanceSquared
     ));
-    return points.slice(0, pointCount);
+    for (let i = 0; i < entries.length; i += 1) {
+      entries[i].rank = i + 1;
+    }
+
+    const unitEntry = counts.get(unitDistanceCoefficientKey(field)) || counts.get("num:" + distanceKey(UNIT_DISTANCE_SQUARED)) || null;
+    const selectedEntry = selectedKey ? counts.get(selectedKey) || null : null;
+    const rows = entries.slice(0, DISTANCE_RACE_ROWS);
+    if (unitEntry && !rows.includes(unitEntry)) {
+      if (rows.length >= DISTANCE_RACE_ROWS) rows.pop();
+      rows.push(unitEntry);
+    }
+    if (selectedEntry && !rows.includes(selectedEntry)) {
+      if (rows.length >= DISTANCE_RACE_ROWS) {
+        let replaceIndex = rows.length - 1;
+        for (let i = rows.length - 1; i >= 0; i -= 1) {
+          if (rows[i] !== unitEntry && rows[i] !== entries[0]) {
+            replaceIndex = i;
+            break;
+          }
+        }
+        rows.splice(replaceIndex, 1);
+      }
+      rows.push(selectedEntry);
+    }
+
+    return {
+      exact: true,
+      pointCount: n,
+      pairCount,
+      rows,
+      unitCount: unitEntry ? unitEntry.count : 0,
+      leader: entries[0] || null,
+      selected: selectedEntry
+    };
   }
 
-  function benchmarkPreview(points) {
-    if (!points.length) {
-      return "<div class=\"benchmark-preview\"><svg viewBox=\"0 0 88 88\" aria-hidden=\"true\"></svg></div>";
-    }
+  function buildDistanceEdges(field, points, pointIndices, targetKey) {
+    if (!targetKey) return [];
+    const edges = [];
+    const keyCache = new Map();
 
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    for (const point of points) {
-      minX = Math.min(minX, point.x);
-      minY = Math.min(minY, point.y);
-      maxX = Math.max(maxX, point.x);
-      maxY = Math.max(maxY, point.y);
-    }
-
-    const pad = 8;
-    const spanX = Math.max(1, maxX - minX);
-    const spanY = Math.max(1, maxY - minY);
-    const scale = Math.min((88 - 2 * pad) / spanX, (88 - 2 * pad) / spanY);
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-    const pointRadius = Math.max(0.7, Math.min(1.55, 9 / Math.sqrt(points.length)));
-    const maxDrawn = 1600;
-    const stride = Math.max(1, Math.ceil(points.length / maxDrawn));
-    let circles = "";
-
-    for (let i = 0; i < points.length; i += stride) {
-      const point = points[i];
-      const x = 44 + (point.x - centerX) * scale;
-      const y = 44 + (point.y - centerY) * scale;
-      circles += "<circle cx=\"" + x.toFixed(2) + "\" cy=\"" + y.toFixed(2) + "\" r=\"" + pointRadius.toFixed(2) + "\"></circle>";
-    }
-
-    return (
-      "<div class=\"benchmark-preview\">" +
-      "<svg viewBox=\"0 0 88 88\" aria-hidden=\"true\">" +
-      "<g fill=\"#2f3b52\" fill-opacity=\"0.72\">" + circles + "</g>" +
-      "</svg></div>"
-    );
-  }
-
-  function squareDiskBenchmark(pointCount) {
-    const n = Math.max(0, Math.floor(pointCount));
-    if (squareDiskBenchmarkCache.has(n)) return squareDiskBenchmarkCache.get(n);
-    if (n < 2) {
-      const empty = { points: n, edges: 0, distSquared: 1, exact: true };
-      squareDiskBenchmarkCache.set(n, empty);
-      return empty;
-    }
-    if (n > 6000) {
-      const paused = { points: n, edges: null, distSquared: null, exact: false };
-      squareDiskBenchmarkCache.set(n, paused);
-      return paused;
-    }
-
-    const points = squareDiskPoints(n);
-    const counts = new Map();
-    for (let i = 0; i < points.length; i += 1) {
+    for (let a = 0; a < pointIndices.length; a += 1) {
+      const i = pointIndices[a];
       const p = points[i];
-      for (let j = i + 1; j < points.length; j += 1) {
+      for (let b = a + 1; b < pointIndices.length; b += 1) {
+        const j = pointIndices[b];
         const q = points[j];
         const dx = p.x - q.x;
         const dy = p.y - q.y;
-        const distSquared = dx * dx + dy * dy;
-        counts.set(distSquared, (counts.get(distSquared) || 0) + 1);
+        const distanceSquared = dx * dx + dy * dy;
+        if (pairDistanceRaceKey(field, p, q, distanceSquared, keyCache) === targetKey) {
+          edges.push([i, j]);
+        }
       }
     }
 
-    let bestDistSquared = 1;
-    let bestEdges = 0;
-    for (const [distSquared, edges] of counts) {
-      if (edges > bestEdges) {
-        bestDistSquared = distSquared;
-        bestEdges = edges;
-      }
+    return edges;
+  }
+
+  function isUnitDistanceRow(row) {
+    return row && Math.abs(row.distanceSquared - UNIT_DISTANCE_SQUARED) < 1 / DISTANCE_KEY_SCALE;
+  }
+
+  function distanceRaceHtml(field, race, selectedKey) {
+    if (!race) return "";
+    let html =
+      "<div class=\"distance-race\">" +
+      "<div class=\"race-heading\"><strong>distance race</strong><span>C(" +
+      formatNumber(race.pointCount) + ", 2) = " + formatNumber(race.pairCount) + " pairs</span></div>";
+
+    if (!race.exact) {
+      return html +
+        "<div class=\"race-note\">paused above " +
+        formatNumber(DISTANCE_RACE_PAIR_LIMIT) + " pairs</div></div>";
     }
 
-    const benchmark = { points: n, edges: bestEdges, distSquared: bestDistSquared, exact: true };
-    squareDiskBenchmarkCache.set(n, benchmark);
-    return benchmark;
+    if (!race.rows.length) {
+      return html + "<div class=\"race-note\">no pairs in lens</div></div>";
+    }
+
+    const maxCount = Math.max(1, race.leader ? race.leader.count : 1);
+    for (const row of race.rows) {
+      const isUnit = isUnitDistanceRow(row);
+      const width = Math.max(1.5, 100 * row.count / maxCount);
+      const rowColor = distanceColor(row);
+      html +=
+        "<div class=\"race-row" +
+        (row.rank === 1 ? " leader" : "") +
+        (isUnit ? " unit" : "") +
+        (row.key === selectedKey ? " selected" : "") +
+        "\" data-distance-key=\"" + escapeAttribute(row.key) +
+        "\" role=\"button\" tabindex=\"0\" aria-pressed=\"" + (row.key === selectedKey ? "true" : "false") +
+        "\" title=\"" + (row.key === selectedKey ? "Show the winner again" : "Show this distance") +
+        "\" style=\"--race-color:" + escapeAttribute(rowColor) +
+        "\">" +
+        "<span class=\"race-label\">" + distanceLabelHtml(field, row) + "</span>" +
+        "<span class=\"race-track\"><span class=\"race-fill\" style=\"width:" +
+        width.toFixed(1) + "%\"></span></span>" +
+        "<strong class=\"race-count\">" + formatNumber(row.count) + "</strong>" +
+        "</div>";
+    }
+
+    return html + "</div>";
+  }
+
+  function shownDistanceHtml(field, race, activeDistance) {
+    if (!race || !race.exact || !activeDistance) return "";
+    const mode = race.selected ? "selected" : "winner";
+    const title = "showing " + (race.selected ? "selected distance" : "winner");
+    return (
+      "<div class=\"shown-distance" + (race.selected ? " selected" : "") +
+      "\" title=\"" + escapeAttribute(title) +
+      "\" style=\"--race-color:" + escapeAttribute(distanceColor(activeDistance)) + "\">" +
+      "<span class=\"shown-label\">" + mode + "</span>" +
+      "<span class=\"race-label\">" + distanceLabelHtml(field, activeDistance) + "</span>" +
+      "</div>"
+    );
   }
 
   function lensScreenGeometry() {
@@ -1055,6 +1327,81 @@
     ctx.restore();
   }
 
+  function drawEdgeSegments(edgeList, points, strokeStyle, lineWidth, predicate) {
+    if (!edgeList.length) return 0;
+
+    let drawn = 0;
+    ctx.save();
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = lineWidth;
+    ctx.beginPath();
+    for (const [i, j] of edgeList) {
+      if (predicate && !predicate(i, j)) continue;
+      const p = points[i];
+      const q = points[j];
+      const ps = worldToScreen(p.x, p.y);
+      const qs = worldToScreen(q.x, q.y);
+      ctx.moveTo(ps.x, ps.y);
+      ctx.lineTo(qs.x, qs.y);
+      drawn += 1;
+    }
+    if (drawn > 0) ctx.stroke();
+    ctx.restore();
+    return drawn;
+  }
+
+  function drawHoverPointHalo(point) {
+    if (!point) return;
+    const ps = worldToScreen(point.x, point.y);
+    const radius = Math.max(5, Math.min(9, state.scale * 0.034));
+    ctx.save();
+    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+    ctx.strokeStyle = "rgba(20, 20, 20, 0.86)";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(ps.x, ps.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function captureRaceRowRects() {
+    const rects = new Map();
+    if (!statusEl) return rects;
+    for (const row of statusEl.querySelectorAll(".race-row[data-distance-key]")) {
+      rects.set(row.dataset.distanceKey, row.getBoundingClientRect());
+    }
+    return rects;
+  }
+
+  function animateRaceRows(previousRects) {
+    if (!statusEl || !previousRects || !previousRects.size) return;
+
+    for (const row of statusEl.querySelectorAll(".race-row[data-distance-key]")) {
+      const previous = previousRects.get(row.dataset.distanceKey);
+      if (!previous) {
+        row.classList.add("entering");
+        requestAnimationFrame(() => row.classList.remove("entering"));
+        continue;
+      }
+
+      const next = row.getBoundingClientRect();
+      const dx = previous.left - next.left;
+      const dy = previous.top - next.top;
+      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) continue;
+
+      row.style.transition = "none";
+      row.style.transform = "translate(" + dx.toFixed(2) + "px, " + dy.toFixed(2) + "px)";
+      row.style.zIndex = dy > 0 ? "2" : "1";
+      row.getBoundingClientRect();
+      requestAnimationFrame(() => {
+        row.style.transition = "";
+        row.style.transform = "";
+        row.style.zIndex = "";
+      });
+    }
+  }
+
   function render() {
     state.dirty = false;
     const field = currentField();
@@ -1072,6 +1419,7 @@
     const lensRadiusSquared = lens.radius * lens.radius;
     const visible = new Uint8Array(points.length);
     const inLens = new Uint8Array(points.length);
+    const lensIndices = [];
     let visiblePoints = 0;
     let lensPoints = 0;
 
@@ -1089,43 +1437,35 @@
       const dy = ps.y - lens.y;
       if (dx * dx + dy * dy <= lensRadiusSquared) {
         inLens[i] = 1;
+        lensIndices.push(i);
         lensPoints += 1;
       }
     }
 
     const drawEdgeLimit = 900000;
     const countEdgeLimit = 1600000;
-    const drawEdges = state.showEdges && edges.length <= drawEdgeLimit;
-    const countEdges = edges.length <= countEdgeLimit;
+    const distanceRace = buildDistanceRace(field, points, lensIndices, state.selectedDistanceKey);
+    const activeDistance = distanceRace.selected || distanceRace.leader;
+    const winningEdges = distanceRace.exact && activeDistance
+      ? buildDistanceEdges(field, points, lensIndices, activeDistance.key)
+      : [];
     let lensEdges = 0;
 
-    if (drawEdges || countEdges) {
-      if (drawEdges) {
-        ctx.save();
-        ctx.strokeStyle = field.edgeStroke;
-        ctx.lineWidth = Math.max(0.35, Math.min(1.05, state.scale * 0.0045));
-        ctx.beginPath();
-      }
-
+    if (distanceRace.exact) {
+      lensEdges = distanceRace.unitCount;
+    } else if (edges.length <= countEdgeLimit) {
       for (const [i, j] of edges) {
-        const lensEdge = inLens[i] && inLens[j];
-        if (lensEdge) {
-          lensEdges += 1;
-          if (drawEdges) {
-            const p = points[i];
-            const q = points[j];
-            const ps = worldToScreen(p.x, p.y);
-            const qs = worldToScreen(q.x, q.y);
-            ctx.moveTo(ps.x, ps.y);
-            ctx.lineTo(qs.x, qs.y);
-          }
-        }
+        if (inLens[i] && inLens[j]) lensEdges += 1;
       }
+    }
 
-      if (drawEdges) {
-        ctx.stroke();
-        ctx.restore();
-      }
+    if (state.showEdges && winningEdges.length <= drawEdgeLimit) {
+      drawEdgeSegments(
+        winningEdges,
+        points,
+        leaderEdgeStroke(activeDistance, 0.58),
+        leaderEdgeLineWidth(1.15)
+      );
     }
 
     if (state.showPoints) {
@@ -1148,7 +1488,7 @@
 
       const rootRadius = Math.max(pointRadius + 1.5, Math.min(6.5, pointRadius * 1.9));
       ctx.save();
-      ctx.fillStyle = "#fff7bc";
+      ctx.fillStyle = "#ffd84d";
       ctx.strokeStyle = "#111111";
       ctx.lineWidth = Math.max(1.1, Math.min(2.2, rootRadius * 0.28));
       ctx.beginPath();
@@ -1165,29 +1505,37 @@
       ctx.restore();
     }
 
+    if (state.hoverPoint && state.showEdges && winningEdges.length) {
+      const hoverPoint = state.hoverPoint;
+      const highlightedEdges = drawEdgeSegments(
+        winningEdges,
+        points,
+        leaderEdgeStroke(activeDistance, 0.94),
+        leaderEdgeLineWidth(2.65),
+        (i, j) => points[i] === hoverPoint || points[j] === hoverPoint
+      );
+      if (highlightedEdges > 0) drawHoverPointHalo(hoverPoint);
+    }
+
     drawLensShade(lens);
 
-    const diskBenchmark = lensPoints > 3 ? squareDiskBenchmark(lensPoints) : null;
     const lensWorldRadius = lens.radius / state.scale;
-    const lensEdgeText = countEdges ? formatNumber(lensEdges) : "paused";
-    const diskText = diskBenchmark
-      ? (diskBenchmark.exact ? formatNumber(diskBenchmark.edges) : "paused")
-      : "0";
-    const diskPreview = diskBenchmark && diskBenchmark.exact
-      ? benchmarkPreview(squareDiskPoints(lensPoints))
-      : benchmarkPreview([]);
+    const lensEdgeText = distanceRace.exact
+      ? formatNumber(distanceRace.unitCount)
+      : edges.length <= countEdgeLimit ? formatNumber(lensEdges) : "paused";
 
+    const previousRaceRects = captureRaceRowRects();
     statusEl.innerHTML =
-      "<div class=\"status-grid\"><div>" +
+      "<div class=\"status-top\">" +
+      "<div class=\"status-meta\">" +
       "<span class=\"field-heading\">" + formatFieldLabelHtml(field) + "</span><br>" +
       "visible points: <strong>" + formatNumber(lensPoints) + "</strong><br>" +
-      "unit distances: <strong>" + lensEdgeText + "</strong><br>" +
-      "field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong><br>" +
-      "<span class=\"comparison-label\">unit distances if <strong>" + formatNumber(lensPoints) +
-      "</strong> points</span><br>" +
-      "<span class=\"comparison-label\">were arranged in a square lattice:</span> " +
-      "<strong class=\"comparison-value\">" + diskText + "</strong>" +
-      "</div><div class=\"benchmark-previews\">" + diskPreview + "</div></div>";
+      "field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong>" +
+      "</div>" +
+      shownDistanceHtml(field, distanceRace, activeDistance) +
+      "</div>" +
+      distanceRaceHtml(field, distanceRace, state.selectedDistanceKey);
+    animateRaceRows(previousRaceRects);
     statusEl.title =
       "computed viewport patch: " + formatNumber(points.length) + " points, " +
       formatNumber(edges.length) + " unit distances from " +
@@ -1219,6 +1567,7 @@
     hidePointTooltip();
     state.fieldId = field.id;
     state.windowRadius = field.defaultWindow;
+    state.selectedDistanceKey = null;
     windowInput.min = String(field.windowMin);
     windowInput.max = String(field.windowMax);
     windowInput.step = String(field.windowStep);
@@ -1285,6 +1634,12 @@
   function closeFieldMenu() {
     fieldOptions.classList.remove("open");
     fieldSelect.setAttribute("aria-expanded", "false");
+  }
+
+  function toggleSelectedDistance(key) {
+    state.selectedDistanceKey = state.selectedDistanceKey === key ? null : key;
+    state.dirty = true;
+    requestDraw();
   }
 
   function toggleFieldMenu() {
@@ -1368,6 +1723,18 @@
   });
   document.addEventListener("click", (event) => {
     if (!fieldMenu.contains(event.target)) closeFieldMenu();
+  });
+  statusEl.addEventListener("click", (event) => {
+    const row = event.target.closest(".race-row[data-distance-key]");
+    if (!row || !statusEl.contains(row)) return;
+    toggleSelectedDistance(row.dataset.distanceKey);
+  });
+  statusEl.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const row = event.target.closest(".race-row[data-distance-key]");
+    if (!row || !statusEl.contains(row)) return;
+    event.preventDefault();
+    toggleSelectedDistance(row.dataset.distanceKey);
   });
   homeButton.addEventListener("click", goHome);
   zoomInButton.addEventListener("click", () => zoomAtLensCenter(1.25));
