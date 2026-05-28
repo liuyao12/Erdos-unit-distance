@@ -4,7 +4,9 @@
   const toolbarEl = document.querySelector(".toolbar");
   const statusEl = document.getElementById("status");
   const tooltipEl = document.getElementById("pointTooltip");
+  const fieldMenu = document.querySelector(".select-wrap");
   const fieldSelect = document.getElementById("fieldSelect");
+  const fieldOptions = document.getElementById("fieldOptions");
   const homeButton = document.getElementById("home");
   const zoomInButton = document.getElementById("zoomIn");
   const zoomOutButton = document.getElementById("zoomOut");
@@ -606,6 +608,10 @@
     return expression;
   }
 
+  function formatFieldLabelHtml(field) {
+    return "<span class=\"field-label\"><strong>Q</strong>(ζ<sub>" + field.m + "</sub>)</span>";
+  }
+
   function reducePowerCoefficients(field, power) {
     const modulus = PHI[field.m];
     const degree = modulus.length - 1;
@@ -1121,7 +1127,7 @@
 
     statusEl.innerHTML =
       "<div class=\"status-grid\"><div>" +
-      "<strong>" + field.label + "</strong><br>" +
+      "<span class=\"field-heading\">" + formatFieldLabelHtml(field) + "</span><br>" +
       "visible points: <strong>" + formatNumber(lensPoints) + "</strong><br>" +
       "unit distances: <strong>" + lensEdgeText + "</strong><br>" +
       "field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong><br>" +
@@ -1164,7 +1170,7 @@
     windowInput.value = String(field.defaultWindow);
     windowInput.disabled = false;
     windowLabel.textContent = "W " + state.windowRadius.toFixed(1);
-    fieldSelect.value = field.id;
+    updateFieldPicker();
     state.dataset = null;
     fitInitial();
   }
@@ -1180,12 +1186,48 @@
 
   function initControls() {
     for (const field of FIELDS) {
-      const option = document.createElement("option");
-      option.value = field.id;
-      option.textContent = field.label;
-      fieldSelect.appendChild(option);
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "field-option";
+      option.dataset.fieldId = field.id;
+      option.setAttribute("role", "option");
+      option.innerHTML = formatFieldLabelHtml(field);
+      option.addEventListener("click", () => {
+        closeFieldMenu();
+        setField(field.id);
+        fieldSelect.focus();
+      });
+      fieldOptions.appendChild(option);
     }
     setField(state.fieldId);
+  }
+
+  function updateFieldPicker() {
+    const field = currentField();
+    fieldSelect.innerHTML = formatFieldLabelHtml(field);
+    for (const option of fieldOptions.querySelectorAll(".field-option")) {
+      const selected = option.dataset.fieldId === field.id;
+      option.classList.toggle("selected", selected);
+      option.setAttribute("aria-selected", selected ? "true" : "false");
+    }
+  }
+
+  function openFieldMenu() {
+    fieldOptions.classList.add("open");
+    fieldSelect.setAttribute("aria-expanded", "true");
+  }
+
+  function closeFieldMenu() {
+    fieldOptions.classList.remove("open");
+    fieldSelect.setAttribute("aria-expanded", "false");
+  }
+
+  function toggleFieldMenu() {
+    if (fieldOptions.classList.contains("open")) {
+      closeFieldMenu();
+    } else {
+      openFieldMenu();
+    }
   }
 
   canvas.addEventListener("pointerdown", (event) => {
@@ -1235,7 +1277,33 @@
     zoomAtLensCenter(Math.exp(-event.deltaY * 0.001));
   }, { passive: false });
 
-  fieldSelect.addEventListener("change", () => setField(fieldSelect.value));
+  fieldSelect.addEventListener("click", toggleFieldMenu);
+  fieldSelect.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeFieldMenu();
+    } else if (event.key === "Enter" || event.key === " " || event.key === "ArrowDown") {
+      event.preventDefault();
+      openFieldMenu();
+      const selected = fieldOptions.querySelector(".field-option.selected");
+      if (selected) selected.focus();
+    }
+  });
+  fieldOptions.addEventListener("keydown", (event) => {
+    const options = Array.from(fieldOptions.querySelectorAll(".field-option"));
+    const index = options.indexOf(document.activeElement);
+    if (event.key === "Escape") {
+      closeFieldMenu();
+      fieldSelect.focus();
+    } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const direction = event.key === "ArrowDown" ? 1 : -1;
+      const next = options[(Math.max(0, index) + direction + options.length) % options.length];
+      next.focus();
+    }
+  });
+  document.addEventListener("click", (event) => {
+    if (!fieldMenu.contains(event.target)) closeFieldMenu();
+  });
   homeButton.addEventListener("click", goHome);
   zoomInButton.addEventListener("click", () => zoomAtLensCenter(1.25));
   zoomOutButton.addEventListener("click", () => zoomAtLensCenter(0.8));
