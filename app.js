@@ -837,14 +837,22 @@
   function distanceLabelHtml(field, row) {
     const exact = exactDistanceText(field, row);
     const decimal = formatDistanceDecimal(row.distanceSquared);
-    const decimalText = "≈ " + decimal;
-    const title = (exact ? "d = " + exact + " " : "d ") + decimalText + "; d^2 = " + formatDistanceSquared(row.distanceSquared);
+    const decimalText = "= " + decimal;
     if (!exact) {
+      const title = "d " + decimalText + "; d^2 = " + formatDistanceSquared(row.distanceSquared);
       return "<span class=\"race-exact\" title=\"" + escapeAttribute(title) + "\">" +
         escapeHtml("d " + decimalText) + "</span>";
     }
 
     const exactHtml = escapeHtml("d = " + exact);
+    const repeatsExact = exact === decimal;
+    const title = repeatsExact
+      ? "d = " + exact + "; d^2 = " + formatDistanceSquared(row.distanceSquared)
+      : "d = " + exact + " " + decimalText + "; d^2 = " + formatDistanceSquared(row.distanceSquared);
+    if (repeatsExact) {
+      return "<span class=\"race-exact\" title=\"" + escapeAttribute(title) + "\">" + exactHtml + "</span>";
+    }
+
     return (
       "<span class=\"race-exact\" title=\"" + escapeAttribute(title) + "\">" + exactHtml + "</span>" +
       "<span class=\"race-decimal\">" + escapeHtml(decimalText) + "</span>"
