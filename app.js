@@ -948,19 +948,27 @@
     requestDraw();
   }
 
+  function placeWorldPointAtScreen(worldX, worldY, sx, sy) {
+    state.centerX = worldX - (sx - state.width / 2) / state.scale;
+    state.centerY = worldY + (sy - state.height / 2) / state.scale;
+  }
+
+  function placeOriginAtLensCenter() {
+    const lens = lensScreenGeometry();
+    placeWorldPointAtScreen(0, 0, lens.x, lens.y);
+  }
+
   function fitInitial() {
     const field = currentField();
-    state.centerX = 0;
-    state.centerY = 0;
     state.scale = Math.max(22, Math.min(1200, lensScreenGeometry().radius / field.defaultLensWorldRadius));
+    placeOriginAtLensCenter();
     state.autoFitPending = true;
     state.dirty = true;
     requestDraw();
   }
 
   function goHome() {
-    state.centerX = 0;
-    state.centerY = 0;
+    placeOriginAtLensCenter();
     state.dirty = true;
     requestDraw();
   }
@@ -968,8 +976,7 @@
   function zoomAt(sx, sy, factor) {
     const before = screenToWorld(sx, sy);
     state.scale = Math.max(8, Math.min(1200, state.scale * factor));
-    state.centerX = before.x - (sx - state.width / 2) / state.scale;
-    state.centerY = before.y + (sy - state.height / 2) / state.scale;
+    placeWorldPointAtScreen(before.x, before.y, sx, sy);
     state.dirty = true;
     requestDraw();
   }
@@ -1191,6 +1198,7 @@
       const targetScale = Math.max(22, Math.min(1200, lensScreenGeometry().radius / field.defaultLensWorldRadius));
       if (Math.abs(targetScale - state.scale) > 0.5) {
         state.scale = targetScale;
+        placeOriginAtLensCenter();
         state.dirty = true;
         requestDraw();
       }
@@ -1225,7 +1233,7 @@
     if (field.fullRing) {
       windowLabel.innerHTML = "full O<sub>K</sub>";
     } else {
-      windowLabel.textContent = "W " + state.windowRadius.toFixed(1);
+      windowLabel.textContent = "W=" + state.windowRadius.toFixed(1);
     }
     updateFieldPicker();
     state.dataset = null;
@@ -1235,7 +1243,7 @@
   function updateWindowRadius() {
     hidePointTooltip();
     state.windowRadius = Number(windowInput.value);
-    windowLabel.textContent = "W " + state.windowRadius.toFixed(1);
+    windowLabel.textContent = "W=" + state.windowRadius.toFixed(1);
     state.dataset = null;
     state.dirty = true;
     requestDraw();
