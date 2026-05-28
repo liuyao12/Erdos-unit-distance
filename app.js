@@ -1132,7 +1132,9 @@
       "unit distances: <strong>" + lensEdgeText + "</strong><br>" +
       "field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong><br>" +
       "<span class=\"comparison-label\">unit distances if <strong>" + formatNumber(lensPoints) +
-      "</strong> points were arranged in a square lattice:</span> <strong class=\"comparison-value\">" + diskText + "</strong>" +
+      "</strong> points</span><br>" +
+      "<span class=\"comparison-label\">were arranged in a square lattice:</span> " +
+      "<strong class=\"comparison-value\">" + diskText + "</strong>" +
       "</div><div class=\"benchmark-previews\">" + diskPreview + "</div></div>";
     statusEl.title =
       "computed viewport patch: " + formatNumber(points.length) + " points, " +
