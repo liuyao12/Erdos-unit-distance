@@ -107,25 +107,19 @@
 
     .status-grid {
       display: grid;
-      grid-template-columns: minmax(210px, 1fr) auto;
-      gap: 12px;
+      grid-template-columns: minmax(0, 1fr) 88px;
+      gap: 10px;
       align-items: start;
     }
 
     .benchmark-previews {
       display: flex;
-      gap: 8px;
+      width: 88px;
     }
 
     .benchmark-preview {
-      width: 96px;
-      display: grid;
-      gap: 4px;
-      justify-items: center;
-      color: var(--muted);
-      font-size: 10px;
-      line-height: 1.1;
-      text-align: center;
+      width: 88px;
+      display: block;
     }
 
     .benchmark-preview svg {
@@ -135,6 +129,14 @@
       background: rgba(255, 255, 255, 0.7);
       border: 1px solid rgba(20, 20, 20, 0.12);
       border-radius: 6px;
+    }
+
+    .comparison-label {
+      display: inline;
+    }
+
+    .comparison-value {
+      display: inline;
     }
 
     .point-tooltip {
@@ -265,11 +267,11 @@
       }
 
       .status-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr) 88px;
       }
 
-      .benchmark-previews {
-        justify-content: flex-start;
+      .comparison-value {
+        display: block;
       }
     }
   </style>
@@ -291,7 +293,7 @@
     <button id="zoomOut" title="Zoom out" aria-label="Zoom out">
       <svg viewBox="0 0 24 24"><path d="M5 12h14"></path></svg>
     </button>
-    <button id="edges" class="active" title="Toggle unit edges" aria-label="Toggle unit edges">
+    <button id="edges" class="active" title="Toggle unit distances" aria-label="Toggle unit distances">
       <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2"></circle><circle cx="18" cy="6" r="2"></circle><circle cx="12" cy="18" r="2"></circle><path d="M8 6h8"></path><path d="m7 8 4 8"></path><path d="m17 8-4 8"></path></svg>
     </button>
     <button id="points" class="active" title="Toggle points" aria-label="Toggle points">
@@ -310,6 +312,6 @@
   </div>
 
   <div class="status" id="status"></div>
-  <script src="app.js?v=20260528-live-slider" defer></script>
+  <script src="app.js?v=20260528-infobox-wording" defer></script>
 </body>
 </html>

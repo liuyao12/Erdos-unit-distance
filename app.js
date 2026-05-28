@@ -763,9 +763,9 @@
     return points.slice(0, pointCount);
   }
 
-  function benchmarkPreview(title, points) {
+  function benchmarkPreview(points) {
     if (!points.length) {
-      return "<div class=\"benchmark-preview\"><svg viewBox=\"0 0 88 88\" aria-hidden=\"true\"></svg><span>" + title + "</span></div>";
+      return "<div class=\"benchmark-preview\"><svg viewBox=\"0 0 88 88\" aria-hidden=\"true\"></svg></div>";
     }
 
     let minX = Infinity;
@@ -801,7 +801,7 @@
       "<div class=\"benchmark-preview\">" +
       "<svg viewBox=\"0 0 88 88\" aria-hidden=\"true\">" +
       "<g fill=\"#2f3b52\" fill-opacity=\"0.72\">" + circles + "</g>" +
-      "</svg><span>" + title + "</span></div>"
+      "</svg></div>"
     );
   }
 
@@ -1116,20 +1116,21 @@
       ? (diskBenchmark.exact ? formatNumber(diskBenchmark.edges) : "paused")
       : "0";
     const diskPreview = diskBenchmark && diskBenchmark.exact
-      ? benchmarkPreview("circular disk", squareDiskPoints(lensPoints))
-      : benchmarkPreview("circular disk", []);
+      ? benchmarkPreview(squareDiskPoints(lensPoints))
+      : benchmarkPreview([]);
 
     statusEl.innerHTML =
       "<div class=\"status-grid\"><div>" +
       "<strong>" + field.label + "</strong><br>" +
       "visible points: <strong>" + formatNumber(lensPoints) + "</strong><br>" +
-      "unit edges: <strong>" + lensEdgeText + "</strong><br>" +
+      "unit distances: <strong>" + lensEdgeText + "</strong><br>" +
       "field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong><br>" +
-      "same visible points in square lattice disk: <strong>" + diskText + "</strong>" +
+      "<span class=\"comparison-label\">unit distances if <strong>" + formatNumber(lensPoints) +
+      "</strong> points were arranged in a square lattice:</span> <strong class=\"comparison-value\">" + diskText + "</strong>" +
       "</div><div class=\"benchmark-previews\">" + diskPreview + "</div></div>";
     statusEl.title =
       "computed viewport patch: " + formatNumber(points.length) + " points, " +
-      formatNumber(edges.length) + " unit edges from " +
+      formatNumber(edges.length) + " unit distances from " +
       formatNumber(dataset.candidateCount) + " coefficient candidates";
 
     if (state.autoFitPending) {
