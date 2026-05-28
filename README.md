@@ -49,8 +49,6 @@ This is an illustration tool for cyclotomic point sets. It is not trying to beat
 - `index.html` - GitHub Pages entry point and UI styles.
 - `app.js` - self-contained cyclotomic reconstruction, drawing, interaction, exact distance grouping, and visible-edge counting.
 - `docs/screenshot.png` - README preview screenshot.
-- `dodecagonal_probe.py`, `reconstruct_12fold.py`, `model_set_window_probe.py`, and `growth_probe.py` - exploratory Python probes for earlier 12-fold and model-set checks.
-- `finite_comparison.html` and `finite_comparison.js` - older auxiliary finite point-set page, separate from the main cyclotomic explorer.
 
 ## Mathematical Context
 
