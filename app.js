@@ -1257,10 +1257,7 @@
     state.dirty = true;
     requestDraw();
   });
-  windowInput.addEventListener("change", updateWindowRadius);
-  windowInput.addEventListener("input", () => {
-    windowLabel.textContent = "W " + Number(windowInput.value).toFixed(1);
-  });
+  windowInput.addEventListener("input", updateWindowRadius);
   saveButton.addEventListener("click", () => {
     const field = currentField();
     const link = document.createElement("a");
