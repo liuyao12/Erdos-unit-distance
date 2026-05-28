@@ -7,6 +7,7 @@
   const fieldMenu = document.querySelector(".select-wrap");
   const fieldSelect = document.getElementById("fieldSelect");
   const fieldOptions = document.getElementById("fieldOptions");
+  const windowControl = document.querySelector(".slider-wrap");
   const homeButton = document.getElementById("home");
   const zoomInButton = document.getElementById("zoomIn");
   const zoomOutButton = document.getElementById("zoomOut");
@@ -18,6 +19,8 @@
   const windowLabel = document.getElementById("windowLabel");
 
   const PHI = {
+    3: [1, 1, 1],
+    4: [1, 0, 1],
     5: [1, 1, 1, 1, 1],
     7: [1, 1, 1, 1, 1, 1, 1],
     8: [1, 0, 0, 0, 1],
@@ -29,6 +32,42 @@
   };
 
   const FIELDS = [
+    {
+      id: "gaussian",
+      type: "cyclotomic",
+      label: "Q(i)",
+      shortLabel: "Z[i]",
+      generator: "i",
+      relationText: "Z[i], i² = -1",
+      m: 4,
+      fullRing: true,
+      defaultLensWorldRadius: 8,
+      defaultWindow: 0,
+      windowMin: 0,
+      windowMax: 1,
+      windowStep: 1,
+      pointFill: "#4267ac",
+      pointStroke: "rgba(45, 70, 125, 0.72)",
+      edgeStroke: "rgba(48, 77, 146, 0.3)"
+    },
+    {
+      id: "eisenstein",
+      type: "cyclotomic",
+      label: "Q(omega)",
+      shortLabel: "Z[omega]",
+      generator: "ω",
+      relationText: "Z[ω], ω³ = 1",
+      m: 3,
+      fullRing: true,
+      defaultLensWorldRadius: 7.5,
+      defaultWindow: 0,
+      windowMin: 0,
+      windowMax: 1,
+      windowStep: 1,
+      pointFill: "#b45b3e",
+      pointStroke: "rgba(128, 62, 42, 0.72)",
+      edgeStroke: "rgba(161, 71, 48, 0.3)"
+    },
     {
       id: "zeta5",
       type: "cyclotomic",
@@ -574,8 +613,9 @@
   }
 
   function formatZetaPower(field, power) {
-    if (power === 1) return "ζ";
-    return "ζ" + superscriptNumber(power);
+    const generator = field.generator || "ζ";
+    if (power === 1) return generator;
+    return generator + superscriptNumber(power);
   }
 
   function formatCyclotomicInteger(field, coeffs) {
@@ -609,7 +649,12 @@
   }
 
   function formatFieldLabelHtml(field) {
-    return "<span class=\"field-label\"><strong>Q</strong>(ζ<sub>" + field.m + "</sub>)</span>";
+    const generator = field.generator || "ζ<sub>" + field.m + "</sub>";
+    return "<span class=\"field-label\"><strong>Q</strong>(" + generator + ")</span>";
+  }
+
+  function fieldRelationText(field) {
+    return field.relationText || "Z[ζ], ζ" + superscriptNumber(field.m) + " = 1";
   }
 
   function reducePowerCoefficients(field, power) {
@@ -739,7 +784,7 @@
       const expressionEl = document.createElement("div");
       fieldEl.className = "tooltip-field";
       expressionEl.className = "tooltip-expression";
-      fieldEl.textContent = "Z[ζ], ζ" + superscriptNumber(field.m) + " = 1";
+      fieldEl.textContent = fieldRelationText(field);
       expressionEl.textContent = formatCyclotomicInteger(field, point.coeffs);
       tooltipEl.replaceChildren(fieldEl, expressionEl);
       state.hoverPoint = point;
@@ -1170,8 +1215,18 @@
     windowInput.max = String(field.windowMax);
     windowInput.step = String(field.windowStep);
     windowInput.value = String(field.defaultWindow);
-    windowInput.disabled = false;
-    windowLabel.textContent = "W " + state.windowRadius.toFixed(1);
+    windowInput.disabled = Boolean(field.fullRing);
+    if (windowControl) {
+      windowControl.classList.toggle("full-ring", Boolean(field.fullRing));
+      windowControl.title = field.fullRing
+        ? "Full ring of integers"
+        : "Window radius W: larger values admit more points";
+    }
+    if (field.fullRing) {
+      windowLabel.innerHTML = "full O<sub>K</sub>";
+    } else {
+      windowLabel.textContent = "W " + state.windowRadius.toFixed(1);
+    }
     updateFieldPicker();
     state.dataset = null;
     fitInitial();

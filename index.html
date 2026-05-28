@@ -314,6 +314,26 @@
       font-variant-numeric: tabular-nums;
     }
 
+    .slider-wrap span sub {
+      font-size: 72%;
+      line-height: 0;
+    }
+
+    .slider-wrap.full-ring {
+      flex: 0 0 auto;
+      min-width: 82px;
+    }
+
+    .slider-wrap.full-ring span {
+      min-width: auto;
+      color: var(--ink);
+      font-weight: 650;
+    }
+
+    .slider-wrap.full-ring input[type="range"] {
+      display: none;
+    }
+
     input[type="range"] {
       width: auto;
       min-width: 0;
@@ -393,6 +413,6 @@
   </div>
 
   <div class="status" id="status"></div>
-  <script src="app.js?v=20260528-two-line-comparison" defer></script>
+  <script src="app.js?v=20260528-quadratic-fields" defer></script>
 </body>
 </html>
