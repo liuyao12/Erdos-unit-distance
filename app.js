@@ -151,6 +151,7 @@
 
   const fieldById = new Map(FIELDS.map((field) => [field.id, field]));
   const embeddingGeometryCache = new Map();
+  const rootPowerCoefficientCache = new Map();
   const squareDiskBenchmarkCache = new Map();
   const UNIT_DISTANCE_SQUARED = 1;
   const UNIT_DISTANCE_TOLERANCE = 1e-8;
@@ -477,7 +478,8 @@
       }
 
       if (accepted) {
-        points.push({ x, y, coeffs: coeffs.slice() });
+        const pointCoeffs = coeffs.slice();
+        points.push({ x, y, coeffs: pointCoeffs, rootPower: rootOfUnityPower(field, pointCoeffs) });
         minX = Math.min(minX, x);
         minY = Math.min(minY, y);
         maxX = Math.max(maxX, x);
@@ -602,6 +604,57 @@
       expression += " " + terms[i].sign + " " + terms[i].body;
     }
     return expression;
+  }
+
+  function reducePowerCoefficients(field, power) {
+    const modulus = PHI[field.m];
+    const degree = modulus.length - 1;
+    const coeffs = new Array(Math.max(power + 1, degree)).fill(0);
+    coeffs[power] = 1;
+
+    for (let i = coeffs.length - 1; i >= degree; i -= 1) {
+      const coefficient = coeffs[i] || 0;
+      if (coefficient === 0) continue;
+      const offset = i - degree;
+      for (let j = 0; j <= degree; j += 1) {
+        coeffs[offset + j] -= coefficient * modulus[j];
+      }
+    }
+
+    return coeffs.slice(0, degree);
+  }
+
+  function rootPowerCoefficients(field) {
+    if (rootPowerCoefficientCache.has(field.id)) {
+      return rootPowerCoefficientCache.get(field.id);
+    }
+
+    const roots = [];
+    for (let power = 0; power < field.m; power += 1) {
+      roots.push({
+        power,
+        coeffs: reducePowerCoefficients(field, power)
+      });
+    }
+    rootPowerCoefficientCache.set(field.id, roots);
+    return roots;
+  }
+
+  function coefficientsEqual(a, b) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i += 1) {
+      if (a[i] !== b[i]) return false;
+    }
+    return true;
+  }
+
+  function rootOfUnityPower(field, coeffs) {
+    for (const root of rootPowerCoefficients(field)) {
+      if (coefficientsEqual(coeffs, root.coeffs)) {
+        return root.power;
+      }
+    }
+    return null;
   }
 
   function tooltipHitRadius() {
@@ -870,6 +923,11 @@
     requestDraw();
   }
 
+  function zoomAtLensCenter(factor) {
+    const lens = lensScreenGeometry();
+    zoomAt(lens.x, lens.y, factor);
+  }
+
   function drawGrid(bounds) {
     if (!state.showGrid) return;
 
@@ -1029,6 +1087,24 @@
       ctx.fill();
       if (pointRadius > 1.8) ctx.stroke();
       ctx.restore();
+
+      const rootRadius = Math.max(pointRadius + 1.5, Math.min(6.5, pointRadius * 1.9));
+      ctx.save();
+      ctx.fillStyle = "#fff7bc";
+      ctx.strokeStyle = "#111111";
+      ctx.lineWidth = Math.max(1.1, Math.min(2.2, rootRadius * 0.28));
+      ctx.beginPath();
+      for (let i = 0; i < points.length; i += 1) {
+        if (!visible[i]) continue;
+        const p = points[i];
+        if (p.rootPower === null || p.rootPower === undefined) continue;
+        const ps = worldToScreen(p.x, p.y);
+        ctx.moveTo(ps.x + rootRadius, ps.y);
+        ctx.arc(ps.x, ps.y, rootRadius, 0, Math.PI * 2);
+      }
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
     }
 
     drawLensShade(lens);
@@ -1155,13 +1231,13 @@
   canvas.addEventListener("wheel", (event) => {
     event.preventDefault();
     hidePointTooltip();
-    zoomAt(event.clientX, event.clientY, Math.exp(-event.deltaY * 0.001));
+    zoomAtLensCenter(Math.exp(-event.deltaY * 0.001));
   }, { passive: false });
 
   fieldSelect.addEventListener("change", () => setField(fieldSelect.value));
   homeButton.addEventListener("click", goHome);
-  zoomInButton.addEventListener("click", () => zoomAt(state.width / 2, state.height / 2, 1.25));
-  zoomOutButton.addEventListener("click", () => zoomAt(state.width / 2, state.height / 2, 0.8));
+  zoomInButton.addEventListener("click", () => zoomAtLensCenter(1.25));
+  zoomOutButton.addEventListener("click", () => zoomAtLensCenter(0.8));
   edgesButton.addEventListener("click", () => {
     state.showEdges = !state.showEdges;
     edgesButton.classList.toggle("active", state.showEdges);
