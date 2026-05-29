@@ -10,7 +10,7 @@ The page is entirely browser-side JavaScript. Viewing or using it does not requi
 
 ## What It Draws
 
-Choose a field from the inclusion poset in the left panel:
+Choose a field from the inclusion poset in the left panel. The vertical placement is scaled by field degree, with higher-degree fields above lower-degree fields:
 
 - `Q(i)` and `Q(ζ_3)` draw the full planar lattices `Z[i]` and `Z[ζ_3]`.
 - `Q(√-2)` draws the full planar lattice from `Z[√-2]`.
