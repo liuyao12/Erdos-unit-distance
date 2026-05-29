@@ -531,7 +531,14 @@
       stroke: rgba(20, 20, 20, 0.2);
       stroke-linecap: round;
       stroke-width: 1.25;
+      transition: stroke 160ms ease, stroke-width 160ms ease, opacity 160ms ease;
       vector-effect: non-scaling-stroke;
+    }
+
+    .poset-lines path.selected-down {
+      opacity: 1;
+      stroke: rgba(36, 54, 216, 0.72);
+      stroke-width: 2.2;
     }
 
     .degree-marker {
@@ -822,6 +829,6 @@
 
   <div class="status" id="status"></div>
   <script src="unit_distance_bounds.js?v=20260529-derived-rules"></script>
-  <script src="app.js?v=20260529-poset-edge-ports" defer></script>
+  <script src="app.js?v=20260529-vertical-poset-edges" defer></script>
 </body>
 </html>
