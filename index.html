@@ -598,6 +598,123 @@
       opacity: 1;
     }
 
+    .field-tower {
+      flex: 0 0 auto;
+      padding-top: 8px;
+      border-top: 1px solid rgba(20, 20, 20, 0.09);
+    }
+
+    .tower-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .tower-title {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    .tower-source {
+      width: 22px;
+      height: 22px;
+      display: inline-grid;
+      place-items: center;
+      color: var(--muted);
+      border-radius: 5px;
+      text-decoration: none;
+    }
+
+    .tower-source:hover {
+      color: var(--ink);
+      background: #f0f0ec;
+    }
+
+    .tower-source:focus-visible {
+      outline: 2px solid rgba(36, 54, 216, 0.32);
+      outline-offset: 2px;
+    }
+
+    .tower-source svg {
+      width: 15px;
+      height: 15px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .tower-diagram {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+      align-items: start;
+    }
+
+    .tower-step {
+      position: relative;
+      min-width: 0;
+      min-height: 46px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 5px 4px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(20, 20, 20, 0.12);
+      border-radius: 5px;
+      color: #242424;
+      font-size: 9.5px;
+      line-height: 1.05;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .tower-step:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      top: 18px;
+      left: calc(100% + 1px);
+      width: 6px;
+      border-top: 1px solid rgba(20, 20, 20, 0.24);
+    }
+
+    .tower-step.cm {
+      box-shadow: inset 0 2px 0 var(--blue);
+    }
+
+    .tower-label {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 500;
+    }
+
+    .tower-degree {
+      max-width: 100%;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 8.5px;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+    }
+
+    .tower-primes {
+      margin-top: 6px;
+      color: rgba(20, 20, 20, 0.58);
+      font-size: 9px;
+      font-weight: 600;
+      line-height: 1.25;
+    }
+
     .slider-wrap {
       height: 36px;
       flex: 1 1 clamp(220px, 34vw, 380px);
@@ -715,6 +832,20 @@
         font-size: 9.5px;
       }
 
+      .field-tower {
+        padding-top: 7px;
+      }
+
+      .tower-step {
+        min-height: 42px;
+        padding-inline: 3px;
+        font-size: 8.5px;
+      }
+
+      .tower-degree {
+        font-size: 7.5px;
+      }
+
       .status {
         left: 12px;
         right: 12px;
@@ -784,6 +915,37 @@
       </button>
     </div>
     <div id="fieldPoset" class="field-poset"></div>
+    <div class="field-tower" aria-label="beginning of the Sawin field tower">
+      <div class="tower-header">
+        <div class="tower-title">Sawin Tower Start</div>
+        <a class="tower-source" href="https://arxiv.org/abs/2605.20579" target="_blank" rel="noreferrer" title="Open Sawin, An explicit lower bound for the unit distance problem" aria-label="Open Sawin paper">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7"></path><path d="M9 7h8v8"></path><path d="M7 7H5v12h12v-2"></path></svg>
+        </a>
+      </div>
+      <div class="tower-diagram">
+        <div class="tower-step" title="Base field">
+          <span class="tower-label field-label"><strong>Q</strong></span>
+          <span class="tower-degree">deg 1</span>
+        </div>
+        <div class="tower-step" title="Q(√D), where D is the product of the primes in T">
+          <span class="tower-label field-label"><strong>Q</strong>(√D)</span>
+          <span class="tower-degree">deg 2</span>
+        </div>
+        <div class="tower-step" title="E = Q(√q : q in T), the first explicit unramified multiquadratic layer">
+          <span class="tower-label field-label">E=<strong>Q</strong>(√T)</span>
+          <span class="tower-degree">deg 8192</span>
+        </div>
+        <div class="tower-step" title="F ranges over larger totally real unramified 2-power extensions">
+          <span class="tower-label">F</span>
+          <span class="tower-degree">varies</span>
+        </div>
+        <div class="tower-step cm" title="The CM field used in the lattice construction is K = F(i)">
+          <span class="tower-label">K=F(i)</span>
+          <span class="tower-degree">CM 2d</span>
+        </div>
+      </div>
+      <div class="tower-primes">T={3,5,7,11,13,17,19,23,29,31,37,41,43}</div>
+    </div>
   </aside>
 
   <div class="toolbar" aria-label="controls">
