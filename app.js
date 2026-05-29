@@ -1866,19 +1866,38 @@
     svg.replaceChildren();
     svg.setAttribute("viewBox", "0 0 " + rect.width + " " + rect.height);
 
-    for (const [fromId, toId] of FIELD_POSET_EDGES) {
+    for (let edgeIndex = 0; edgeIndex < FIELD_POSET_EDGES.length; edgeIndex += 1) {
+      const [fromId, toId] = FIELD_POSET_EDGES[edgeIndex];
       const from = fieldPosetEl.querySelector("[data-poset-node=\"" + fromId + "\"]");
       const to = fieldPosetEl.querySelector("[data-poset-node=\"" + toId + "\"]");
       if (!from || !to) continue;
 
       const fromRect = from.getBoundingClientRect();
       const toRect = to.getBoundingClientRect();
-      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      line.setAttribute("x1", fromRect.left + fromRect.width / 2 - rect.left);
-      line.setAttribute("y1", fromRect.top + fromRect.height / 2 - rect.top);
-      line.setAttribute("x2", toRect.left + toRect.width / 2 - rect.left);
-      line.setAttribute("y2", toRect.top + toRect.height / 2 - rect.top);
-      svg.appendChild(line);
+      const x1 = fromRect.left + fromRect.width / 2 - rect.left;
+      const y1 = fromRect.top + fromRect.height / 2 - rect.top;
+      const x2 = toRect.left + toRect.width / 2 - rect.left;
+      const y2 = toRect.top + toRect.height / 2 - rect.top;
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const length = Math.max(1, Math.hypot(dx, dy));
+      const normalX = -dy / length;
+      const normalY = dx / length;
+      const direction = dx === 0 ? (edgeIndex % 2 === 0 ? 1 : -1) : Math.sign(dx);
+      const bend = direction * clamp(5, Math.abs(dx) * 0.12 + Math.abs(dy) * 0.04, 24);
+      const c1x = x1 + dx * 0.33 + normalX * bend;
+      const c1y = y1 + dy * 0.33 + normalY * bend;
+      const c2x = x1 + dx * 0.67 + normalX * bend;
+      const c2y = y1 + dy * 0.67 + normalY * bend;
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute(
+        "d",
+        "M " + x1.toFixed(1) + " " + y1.toFixed(1) +
+        " C " + c1x.toFixed(1) + " " + c1y.toFixed(1) +
+        ", " + c2x.toFixed(1) + " " + c2y.toFixed(1) +
+        ", " + x2.toFixed(1) + " " + y2.toFixed(1)
+      );
+      svg.appendChild(path);
     }
   }
 

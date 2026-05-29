@@ -445,7 +445,8 @@
       pointer-events: none;
     }
 
-    .poset-lines line {
+    .poset-lines path {
+      fill: none;
       stroke: rgba(20, 20, 20, 0.2);
       stroke-linecap: round;
       stroke-width: 1.25;
@@ -457,22 +458,19 @@
       left: var(--x);
       top: var(--y);
       z-index: 1;
-      width: 78px;
-      min-height: 32px;
+      width: auto;
+      min-width: 0;
+      min-height: 30px;
       height: auto;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 4px 6px;
+      padding: 4px 9px;
       transform: translate(-50%, -50%);
       color: #242424;
       font: 650 11px/1.05 Inter, ui-sans-serif, system-ui, sans-serif;
       text-align: center;
-      white-space: normal;
-    }
-
-    .field-node[data-field-id="sqrtMinus2SqrtMinus3"] {
-      width: 108px;
+      white-space: nowrap;
     }
 
     .field-node:hover:not(:disabled) {
@@ -492,8 +490,9 @@
     }
 
     .field-node:disabled {
-      width: 48px;
+      width: auto;
       min-height: 28px;
+      padding-inline: 10px;
       color: var(--ink);
       background: #f4f3ee;
       cursor: default;
@@ -559,12 +558,7 @@
       }
 
       .field-node {
-        width: 72px;
         font-size: 10.5px;
-      }
-
-      .field-node[data-field-id="sqrtMinus2SqrtMinus3"] {
-        width: 98px;
       }
     }
 
@@ -617,14 +611,9 @@
       }
 
       .field-node {
-        width: 62px;
         min-height: 25px;
-        padding: 3px 4px;
+        padding: 3px 7px;
         font-size: 9.5px;
-      }
-
-      .field-node[data-field-id="sqrtMinus2SqrtMinus3"] {
-        width: 82px;
       }
 
       .status {
@@ -730,6 +719,6 @@
   </div>
 
   <div class="status" id="status"></div>
-  <script src="app.js?v=20260529-field-poset-drawer" defer></script>
+  <script src="app.js?v=20260529-field-poset-curves" defer></script>
 </body>
 </html>
