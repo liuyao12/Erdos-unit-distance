@@ -497,6 +497,7 @@
 
     const geometry = {
       embeddings,
+      matrix,
       inverse: invertMatrix(matrix)
     };
     embeddingGeometryCache.set(field.id, geometry);
@@ -638,51 +639,83 @@
     const started = performance.now();
     const degree = fieldDegree(field);
     const total = plan.candidateCount;
-    const embeddings = embeddingGeometry(field).embeddings;
+    const geometry = embeddingGeometry(field);
+    const embeddings = geometry.embeddings;
+    const matrix = geometry.matrix;
     const internalRadiusSquared = windowRadius * windowRadius;
     const coeffs = new Array(degree).fill(0);
-    const sizes = plan.ranges.map((range) => range.size);
-    const lows = plan.ranges.map((range) => range.min);
+    const realCoords = new Array(degree).fill(0);
+    const intervals = [
+      [plan.bounds.xMin, plan.bounds.xMax],
+      [plan.bounds.yMin, plan.bounds.yMax]
+    ];
+    for (let row = 2; row < degree; row += 1) {
+      intervals.push([-windowRadius, windowRadius]);
+    }
+    const suffixMin = Array.from({ length: degree + 1 }, () => new Array(degree).fill(0));
+    const suffixMax = Array.from({ length: degree + 1 }, () => new Array(degree).fill(0));
     const points = [];
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
     let maxY = -Infinity;
+    let testedCandidateCount = 0;
 
-    for (let code = 0; code < total; code += 1) {
-      let value = code;
-      for (let i = 0; i < degree; i += 1) {
-        coeffs[i] = lows[i] + (value % sizes[i]);
-        value = Math.floor(value / sizes[i]);
+    for (let coeffIndex = degree - 1; coeffIndex >= 0; coeffIndex -= 1) {
+      for (let row = 0; row < degree; row += 1) {
+        const coefficient = matrix[row][coeffIndex];
+        const low = plan.ranges[coeffIndex].min;
+        const high = plan.ranges[coeffIndex].max;
+        const contributionMin = coefficient >= 0 ? coefficient * low : coefficient * high;
+        const contributionMax = coefficient >= 0 ? coefficient * high : coefficient * low;
+        suffixMin[coeffIndex][row] = suffixMin[coeffIndex + 1][row] + contributionMin;
+        suffixMax[coeffIndex][row] = suffixMax[coeffIndex + 1][row] + contributionMax;
+      }
+    }
+
+    const canComplete = (nextCoeffIndex) => {
+      for (let row = 0; row < degree; row += 1) {
+        if (realCoords[row] + suffixMax[nextCoeffIndex][row] < intervals[row][0] - 1e-9) return false;
+        if (realCoords[row] + suffixMin[nextCoeffIndex][row] > intervals[row][1] + 1e-9) return false;
+      }
+      return true;
+    };
+
+    const visit = (coeffIndex) => {
+      if (coeffIndex < degree) {
+        const range = plan.ranges[coeffIndex];
+        for (let value = range.min; value <= range.max; value += 1) {
+          coeffs[coeffIndex] = value;
+          for (let row = 0; row < degree; row += 1) {
+            realCoords[row] += value * matrix[row][coeffIndex];
+          }
+          if (canComplete(coeffIndex + 1)) visit(coeffIndex + 1);
+          for (let row = 0; row < degree; row += 1) {
+            realCoords[row] -= value * matrix[row][coeffIndex];
+          }
+        }
+        return;
       }
 
+      testedCandidateCount += 1;
       let accepted = true;
-      let x = 0;
-      let y = 0;
-      for (let embeddingIndex = 0; embeddingIndex < embeddings.length; embeddingIndex += 1) {
-        const powers = embeddings[embeddingIndex];
-        let re = 0;
-        let im = 0;
-        for (let j = 0; j < degree; j += 1) {
-          re += coeffs[j] * powers[j].re;
-          im += coeffs[j] * powers[j].im;
-        }
-        const normSquared = re * re + im * im;
-        if (embeddingIndex === 0) {
-          x = re;
-          y = im;
-          if (
-            x < plan.bounds.xMin - 1e-9 ||
-            x > plan.bounds.xMax + 1e-9 ||
-            y < plan.bounds.yMin - 1e-9 ||
-            y > plan.bounds.yMax + 1e-9
-          ) {
-            accepted = false;
-            break;
-          }
-        } else if (normSquared > internalRadiusSquared + 1e-9) {
+      const x = realCoords[0];
+      const y = realCoords[1];
+      if (
+        x < plan.bounds.xMin - 1e-9 ||
+        x > plan.bounds.xMax + 1e-9 ||
+        y < plan.bounds.yMin - 1e-9 ||
+        y > plan.bounds.yMax + 1e-9
+      ) {
+        accepted = false;
+      }
+
+      for (let embeddingIndex = 1; accepted && embeddingIndex < embeddings.length; embeddingIndex += 1) {
+        const row = embeddingIndex * 2;
+        const re = realCoords[row];
+        const im = realCoords[row + 1];
+        if (re * re + im * im > internalRadiusSquared + 1e-9) {
           accepted = false;
-          break;
         }
       }
 
@@ -699,7 +732,9 @@
         maxX = Math.max(maxX, x);
         maxY = Math.max(maxY, y);
       }
-    }
+    };
+
+    if (canComplete(0)) visit(0);
 
     const edges = buildUnitDistanceEdges(points);
 
@@ -710,6 +745,7 @@
       edges,
       queryBounds: plan.bounds,
       candidateCount: total,
+      testedCandidateCount,
       bounds: { minX, minY, maxX, maxY },
       buildMs: performance.now() - started,
       exactPhysicalCrop: false
@@ -2032,10 +2068,13 @@
       "</div>" +
       distanceRaceHtml(field, distanceRace, state.selectedDistanceKey);
     animateRaceRows(previousRaceRects);
+    const candidateText = dataset.testedCandidateCount < dataset.candidateCount
+      ? "tested " + formatNumber(dataset.testedCandidateCount) + " of " +
+        formatNumber(dataset.candidateCount) + " candidate coefficient vectors"
+      : formatNumber(dataset.candidateCount) + " coefficient candidates";
     statusEl.title =
       "computed viewport patch: " + formatNumber(points.length) + " points, " +
-      formatNumber(edges.length) + " unit distances from " +
-      formatNumber(dataset.candidateCount) + " coefficient candidates";
+      formatNumber(edges.length) + " unit distances; " + candidateText;
 
     if (state.autoFitPending) {
       state.autoFitPending = false;
