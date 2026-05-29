@@ -1427,8 +1427,8 @@
     return "<a class=\"lower-bound-card\" href=\"" + escapeAttribute(sourceUrl) +
       "\" target=\"_blank\" rel=\"noopener noreferrer\" title=\"" + escapeAttribute(title) +
       "\" aria-label=\"" + escapeAttribute(ariaLabel) + "\">" +
-      "<span class=\"lower-bound-label\">u(n) &ge;</span>" +
-      "<span class=\"lower-bound-value\">" + formatNumber(entry.lowerBound) +
+      "<span class=\"lower-bound-label\">known record</span>" +
+      "<span class=\"lower-bound-value\">u(n) &ge; " + formatNumber(entry.lowerBound) +
       "<svg class=\"lower-bound-info\" viewBox=\"0 0 24 24\" aria-hidden=\"true\">" +
       "<circle cx=\"12\" cy=\"12\" r=\"9\"></circle>" +
       "<path d=\"M12 11v5\"></path>" +
