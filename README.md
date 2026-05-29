@@ -36,6 +36,8 @@ and shows a live distance race. Rows animate into their new order as pan and zoo
 
 The canvas draws edges for the current race leader, with color tied to the active distance. Clicking a race row pins that distance until the row is clicked again or another distance is selected. Unit distance appears in the race even when it is not the leader. Hovering a point shows its element in the selected ring and highlights the active distance edges incident to that point.
 
+When the lens contains an `n` covered by the vendored lower-bound table, the status box shows a linked lower bound for `u(n)`, the maximum possible number of unit distances among `n` planar points. The snapshot comes from Kevin Moore's [Point sets with many unit distances](https://users.renyi.hu/~kjmoore/units.html) table; for missing `n`, the app uses the best stored row with `m <= n`, by monotonicity.
+
 This is an illustration tool for selected number-field point sets. It is not trying to beat, compare with, or reproduce the Erdős square-lattice construction.
 
 ## Controls
@@ -50,6 +52,7 @@ This is an illustration tool for selected number-field point sets. It is not try
 
 - `index.html` - GitHub Pages entry point and UI styles.
 - `app.js` - self-contained field reconstruction, drawing, interaction, exact distance grouping, and visible-edge counting.
+- `unit_distance_bounds.js` - vendored lower-bound snapshot for the status box.
 - `docs/screenshot.png` - README preview screenshot.
 
 ## Mathematical Context

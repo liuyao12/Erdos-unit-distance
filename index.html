@@ -100,6 +100,20 @@
       font-weight: 650;
     }
 
+    .status a {
+      color: var(--blue);
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .status a:hover {
+      text-decoration: underline;
+    }
+
+    .status-bound {
+      white-space: nowrap;
+    }
+
     .status-top {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -722,6 +736,7 @@
   </div>
 
   <div class="status" id="status"></div>
-  <script src="app.js?v=20260529-svg-export" defer></script>
+  <script src="unit_distance_bounds.js?v=20260529"></script>
+  <script src="app.js?v=20260529-lower-bounds" defer></script>
 </body>
 </html>
