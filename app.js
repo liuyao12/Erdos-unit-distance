@@ -267,20 +267,22 @@
   ];
 
   const FIELD_POSET_NODES = [
-    { id: "rational", labelHtml: "<span class=\"field-label\"><strong>Q</strong></span>", x: 50, y: 90, disabled: true },
-    { id: "gaussian", fieldId: "gaussian", x: 18, y: 72 },
-    { id: "eisenstein", fieldId: "eisenstein", x: 50, y: 72 },
-    { id: "sqrtMinus2", fieldId: "sqrtMinus2", x: 82, y: 72 },
-    { id: "zeta5", fieldId: "zeta5", x: 10, y: 54 },
-    { id: "zeta8", fieldId: "zeta8", x: 31, y: 54 },
-    { id: "zeta12", fieldId: "zeta12", x: 52, y: 54 },
-    { id: "sqrtMinus2SqrtMinus3", fieldId: "sqrtMinus2SqrtMinus3", x: 77, y: 54 },
-    { id: "zeta7", fieldId: "zeta7", x: 12, y: 36 },
-    { id: "zeta9", fieldId: "zeta9", x: 38, y: 36 },
-    { id: "zeta18", fieldId: "zeta18", x: 58, y: 36 },
-    { id: "zeta30", fieldId: "zeta30", x: 82, y: 36 },
-    { id: "zeta24", fieldId: "zeta24", x: 56, y: 14 }
+    { id: "rational", labelHtml: "<span class=\"field-label\"><strong>Q</strong></span>", x: 50, degree: 1, disabled: true },
+    { id: "gaussian", fieldId: "gaussian", x: 20 },
+    { id: "eisenstein", fieldId: "eisenstein", x: 50 },
+    { id: "sqrtMinus2", fieldId: "sqrtMinus2", x: 80 },
+    { id: "zeta5", fieldId: "zeta5", x: 14 },
+    { id: "zeta8", fieldId: "zeta8", x: 34 },
+    { id: "zeta12", fieldId: "zeta12", x: 55 },
+    { id: "sqrtMinus2SqrtMinus3", fieldId: "sqrtMinus2SqrtMinus3", x: 78 },
+    { id: "zeta7", fieldId: "zeta7", x: 18 },
+    { id: "zeta9", fieldId: "zeta9", x: 43 },
+    { id: "zeta18", fieldId: "zeta18", x: 65 },
+    { id: "zeta30", fieldId: "zeta30", x: 35 },
+    { id: "zeta24", fieldId: "zeta24", x: 69 }
   ];
+  const FIELD_POSET_TOP_Y = 14;
+  const FIELD_POSET_BOTTOM_Y = 90;
 
   const FIELD_POSET_EDGES = [
     ["rational", "gaussian"],
@@ -304,6 +306,8 @@
   ];
 
   const fieldById = new Map(FIELDS.map((field) => [field.id, field]));
+  const FIELD_POSET_MIN_DEGREE = Math.min(...FIELD_POSET_NODES.map(fieldPosetNodeDegree));
+  const FIELD_POSET_MAX_DEGREE = Math.max(...FIELD_POSET_NODES.map(fieldPosetNodeDegree));
   const embeddingGeometryCache = new Map();
   const rootPowerCoefficientCache = new Map();
   const UNIT_DISTANCE_SQUARED = 1;
@@ -401,6 +405,29 @@
   function fieldDegree(field) {
     if (field.degree) return field.degree;
     return PHI[field.m].length - 1;
+  }
+
+  function fieldPosetNodeDegree(node) {
+    if (node.degree) return node.degree;
+    const field = node.fieldId ? fieldById.get(node.fieldId) : null;
+    return field ? fieldDegree(field) : 1;
+  }
+
+  function fieldPosetYForDegree(degree) {
+    if (FIELD_POSET_MAX_DEGREE === FIELD_POSET_MIN_DEGREE) return 50;
+    const boundedDegree = clamp(FIELD_POSET_MIN_DEGREE, degree, FIELD_POSET_MAX_DEGREE);
+    const t = (boundedDegree - FIELD_POSET_MIN_DEGREE) /
+      (FIELD_POSET_MAX_DEGREE - FIELD_POSET_MIN_DEGREE);
+    return FIELD_POSET_BOTTOM_Y - t * (FIELD_POSET_BOTTOM_Y - FIELD_POSET_TOP_Y);
+  }
+
+  function fieldPosetNodePosition(node) {
+    const degree = fieldPosetNodeDegree(node);
+    return {
+      x: node.x,
+      y: fieldPosetYForDegree(degree),
+      degree
+    };
   }
 
   function fieldEmbeddingValues(field) {
@@ -1990,17 +2017,19 @@
 
     for (const node of FIELD_POSET_NODES) {
       const field = node.fieldId ? fieldById.get(node.fieldId) : null;
+      const position = fieldPosetNodePosition(node);
       const button = document.createElement("button");
       button.type = "button";
       button.className = "field-node";
       button.dataset.posetNode = node.id;
-      button.style.setProperty("--x", node.x + "%");
-      button.style.setProperty("--y", node.y + "%");
+      button.dataset.degree = String(position.degree);
+      button.style.setProperty("--x", position.x + "%");
+      button.style.setProperty("--y", position.y.toFixed(2) + "%");
       button.innerHTML = node.labelHtml || formatFieldLabelHtml(field);
-      button.title = field ? fieldRelationText(field) : "Q";
+      button.title = (field ? fieldRelationText(field) : "Q") + "; degree " + position.degree;
       if (field) {
         button.dataset.fieldId = field.id;
-        button.setAttribute("aria-label", field.label);
+        button.setAttribute("aria-label", field.label + ", degree " + position.degree);
         button.setAttribute("aria-pressed", "false");
         button.addEventListener("click", () => {
           setField(field.id);
@@ -2008,7 +2037,7 @@
         });
       } else {
         button.disabled = true;
-        button.setAttribute("aria-label", "Q");
+        button.setAttribute("aria-label", "Q, degree " + position.degree);
       }
       fieldPosetEl.appendChild(button);
     }
