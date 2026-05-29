@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cyclotomic Cut-and-Project Explorer</title>
+  <title>Number-Field Cut-and-Project Explorer</title>
   <style>
     :root {
       --bg: #f8f7f2;
@@ -47,8 +47,8 @@
     .toolbar {
       position: fixed;
       top: 16px;
-      left: 16px;
-      max-width: calc(100vw - 32px);
+      left: 350px;
+      max-width: calc(100vw - 366px);
       display: flex;
       align-items: center;
       gap: 8px;
@@ -59,94 +59,6 @@
       box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
       backdrop-filter: blur(10px);
       user-select: none;
-    }
-
-    .select-wrap {
-      height: 36px;
-      min-width: 132px;
-      display: flex;
-      align-items: center;
-      position: relative;
-      padding: 0;
-      border: 1px solid rgba(20, 20, 20, 0.18);
-      border-radius: 6px;
-      background: #ffffff;
-    }
-
-    .field-button {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      border: 0;
-      border-radius: 6px;
-      padding: 0 9px 0 10px;
-      background: transparent;
-      color: #242424;
-      font: 600 12px Inter, ui-sans-serif, system-ui, sans-serif;
-      line-height: 1;
-      cursor: pointer;
-    }
-
-    .field-button::after {
-      content: "";
-      width: 0;
-      height: 0;
-      border-left: 4px solid transparent;
-      border-right: 4px solid transparent;
-      border-top: 5px solid #6b6b68;
-    }
-
-    .field-button:hover {
-      background: #f0f0ec;
-    }
-
-    .field-button:focus-visible,
-    .field-option:focus-visible {
-      outline: 2px solid rgba(36, 54, 216, 0.4);
-      outline-offset: 2px;
-    }
-
-    .field-options {
-      position: absolute;
-      top: calc(100% + 6px);
-      left: 0;
-      z-index: 5;
-      min-width: 100%;
-      display: none;
-      gap: 2px;
-      padding: 4px;
-      background: #ffffff;
-      border: 1px solid rgba(20, 20, 20, 0.18);
-      border-radius: 6px;
-      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
-    }
-
-    .field-options.open {
-      display: grid;
-    }
-
-    .field-option {
-      width: 100%;
-      height: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      border: 0;
-      border-radius: 4px;
-      padding: 0 8px;
-      background: transparent;
-      color: #242424;
-      font: 600 12px Inter, ui-sans-serif, system-ui, sans-serif;
-      text-align: left;
-      white-space: nowrap;
-    }
-
-    .field-option:hover,
-    .field-option.selected {
-      background: #f0f0ec;
     }
 
     .field-label strong,
@@ -461,6 +373,133 @@
       stroke-linejoin: round;
     }
 
+    .field-panel {
+      position: fixed;
+      top: 16px;
+      bottom: 16px;
+      left: 16px;
+      z-index: 4;
+      width: 318px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+      backdrop-filter: blur(10px);
+      user-select: none;
+    }
+
+    .field-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .field-panel-title {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    .field-panel-close,
+    .field-drawer-toggle {
+      display: none;
+    }
+
+    .field-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 7;
+      background: rgba(20, 20, 20, 0.2);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 180ms ease, visibility 180ms ease;
+      visibility: hidden;
+    }
+
+    .field-backdrop.visible {
+      opacity: 1;
+      pointer-events: auto;
+      visibility: visible;
+    }
+
+    .field-poset {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 520px;
+      overflow: hidden;
+    }
+
+    .poset-lines {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    .poset-lines line {
+      stroke: rgba(20, 20, 20, 0.2);
+      stroke-linecap: round;
+      stroke-width: 1.25;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .field-node {
+      position: absolute;
+      left: var(--x);
+      top: var(--y);
+      z-index: 1;
+      width: 78px;
+      min-height: 32px;
+      height: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 6px;
+      transform: translate(-50%, -50%);
+      color: #242424;
+      font: 650 11px/1.05 Inter, ui-sans-serif, system-ui, sans-serif;
+      text-align: center;
+      white-space: normal;
+    }
+
+    .field-node[data-field-id="sqrtMinus2SqrtMinus3"] {
+      width: 108px;
+    }
+
+    .field-node:hover:not(:disabled) {
+      background: #f0f0ec;
+    }
+
+    .field-node:focus-visible {
+      outline: 2px solid rgba(36, 54, 216, 0.4);
+      outline-offset: 2px;
+    }
+
+    .field-node.selected {
+      color: #ffffff;
+      background: #22242a;
+      border-color: #22242a;
+      box-shadow: 0 4px 12px rgba(20, 20, 20, 0.14);
+    }
+
+    .field-node:disabled {
+      width: 48px;
+      min-height: 28px;
+      color: var(--ink);
+      background: #f4f3ee;
+      cursor: default;
+      opacity: 1;
+    }
+
     .slider-wrap {
       height: 36px;
       flex: 1 1 clamp(220px, 34vw, 380px);
@@ -509,17 +548,83 @@
       accent-color: #22242a;
     }
 
+    @media (max-width: 900px) {
+      .toolbar {
+        left: 314px;
+        max-width: calc(100vw - 326px);
+      }
+
+      .field-panel {
+        width: 286px;
+      }
+
+      .field-node {
+        width: 72px;
+        font-size: 10.5px;
+      }
+
+      .field-node[data-field-id="sqrtMinus2SqrtMinus3"] {
+        width: 98px;
+      }
+    }
+
     @media (max-width: 720px) {
       .toolbar {
         right: 12px;
         left: 12px;
         top: 12px;
         flex-wrap: wrap;
+        max-width: none;
+      }
+
+      .field-drawer-toggle {
+        display: inline-grid;
       }
 
       .slider-wrap {
         flex-basis: 220px;
         max-width: none;
+      }
+
+      .field-panel {
+        top: 0;
+        right: auto;
+        bottom: 0;
+        left: 0;
+        z-index: 8;
+        width: min(340px, 86vw);
+        height: auto;
+        padding: 10px;
+        border-radius: 0 8px 8px 0;
+        transform: translateX(-105%);
+        transition: transform 180ms ease;
+        visibility: hidden;
+      }
+
+      .field-panel.open {
+        transform: translateX(0);
+        visibility: visible;
+      }
+
+      .field-panel-close {
+        width: 30px;
+        height: 30px;
+        display: inline-grid;
+      }
+
+      .field-poset {
+        min-height: 0;
+      }
+
+      .field-node {
+        width: 62px;
+        min-height: 25px;
+        padding: 3px 4px;
+        font-size: 9.5px;
+      }
+
+      .field-node[data-field-id="sqrtMinus2SqrtMinus3"] {
+        width: 82px;
       }
 
       .status {
@@ -581,12 +686,22 @@
 <body>
   <canvas id="stage"></canvas>
   <div class="point-tooltip" id="pointTooltip" aria-hidden="true"></div>
+  <div id="fieldBackdrop" class="field-backdrop" aria-hidden="true"></div>
+
+  <aside class="field-panel" aria-label="number field poset">
+    <div class="field-panel-header">
+      <div class="field-panel-title">Fields</div>
+      <button id="fieldPanelClose" class="field-panel-close" type="button" title="Close fields" aria-label="Close fields">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg>
+      </button>
+    </div>
+    <div id="fieldPoset" class="field-poset"></div>
+  </aside>
 
   <div class="toolbar" aria-label="controls">
-    <div class="select-wrap" title="Field">
-      <button id="fieldSelect" class="field-button" type="button" aria-label="Field" aria-haspopup="listbox" aria-expanded="false"></button>
-      <div id="fieldOptions" class="field-options" role="listbox" aria-label="Field"></div>
-    </div>
+    <button id="fieldPanelToggle" class="field-drawer-toggle" title="Fields" aria-label="Fields" aria-expanded="false">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"></circle><circle cx="6" cy="13" r="2"></circle><circle cx="18" cy="13" r="2"></circle><circle cx="12" cy="20" r="2"></circle><path d="M11 6.6 7.2 11.4"></path><path d="m13 6.6 3.8 4.8"></path><path d="M7.8 14.5 11 18.2"></path><path d="m16.2 14.5-3.2 3.7"></path></svg>
+    </button>
     <button id="home" title="Home: center on origin" aria-label="Home: center on origin">
       <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"></path><path d="M5.5 10.5V20h13v-9.5"></path></svg>
     </button>
@@ -615,6 +730,6 @@
   </div>
 
   <div class="status" id="status"></div>
-  <script src="app.js?v=20260528-equal-distance-labels" defer></script>
+  <script src="app.js?v=20260529-field-poset-drawer" defer></script>
 </body>
 </html>
