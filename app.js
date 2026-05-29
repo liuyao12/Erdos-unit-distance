@@ -268,17 +268,17 @@
 
   const FIELD_POSET_NODES = [
     { id: "rational", labelHtml: "<span class=\"field-label\"><strong>Q</strong></span>", x: 50, degree: 1, disabled: true },
-    { id: "gaussian", fieldId: "gaussian", x: 20 },
+    { id: "gaussian", fieldId: "gaussian", x: 26 },
     { id: "eisenstein", fieldId: "eisenstein", x: 50 },
     { id: "sqrtMinus2", fieldId: "sqrtMinus2", x: 80 },
-    { id: "zeta5", fieldId: "zeta5", x: 14 },
-    { id: "zeta8", fieldId: "zeta8", x: 34 },
-    { id: "zeta12", fieldId: "zeta12", x: 55 },
-    { id: "sqrtMinus2SqrtMinus3", fieldId: "sqrtMinus2SqrtMinus3", x: 78 },
-    { id: "zeta7", fieldId: "zeta7", x: 18 },
-    { id: "zeta9", fieldId: "zeta9", x: 43 },
-    { id: "zeta18", fieldId: "zeta18", x: 65 },
-    { id: "zeta30", fieldId: "zeta30", x: 35 },
+    { id: "zeta5", fieldId: "zeta5", x: 26 },
+    { id: "zeta8", fieldId: "zeta8", x: 43 },
+    { id: "zeta12", fieldId: "zeta12", x: 60 },
+    { id: "sqrtMinus2SqrtMinus3", fieldId: "sqrtMinus2SqrtMinus3", x: 82 },
+    { id: "zeta7", fieldId: "zeta7", x: 26 },
+    { id: "zeta9", fieldId: "zeta9", x: 47 },
+    { id: "zeta18", fieldId: "zeta18", x: 69 },
+    { id: "zeta30", fieldId: "zeta30", x: 42 },
     { id: "zeta24", fieldId: "zeta24", x: 69 }
   ];
   const FIELD_POSET_TOP_Y = 14;
@@ -308,6 +308,8 @@
   const fieldById = new Map(FIELDS.map((field) => [field.id, field]));
   const FIELD_POSET_MIN_DEGREE = Math.min(...FIELD_POSET_NODES.map(fieldPosetNodeDegree));
   const FIELD_POSET_MAX_DEGREE = Math.max(...FIELD_POSET_NODES.map(fieldPosetNodeDegree));
+  const FIELD_POSET_DEGREES = [...new Set(FIELD_POSET_NODES.map(fieldPosetNodeDegree))]
+    .sort((a, b) => b - a);
   const embeddingGeometryCache = new Map();
   const rootPowerCoefficientCache = new Map();
   const UNIT_DISTANCE_SQUARED = 1;
@@ -2017,6 +2019,7 @@
       "<div class=\"status-top\">" +
       "<div class=\"status-meta\">" +
       "<span class=\"field-heading\">" + formatFieldLabelHtml(field) + "</span><br>" +
+      "degree: <strong>" + fieldDegree(field) + "</strong><br>" +
       "visible points: n=<strong>" + formatNumber(lensPoints) + "</strong><br>" +
       "field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong>" +
       "</div>" +
@@ -2099,6 +2102,14 @@
     lines.classList.add("poset-lines");
     lines.setAttribute("aria-hidden", "true");
     fieldPosetEl.replaceChildren(lines);
+
+    for (const degree of FIELD_POSET_DEGREES) {
+      const marker = document.createElement("div");
+      marker.className = "degree-marker";
+      marker.style.setProperty("--y", fieldPosetYForDegree(degree).toFixed(2) + "%");
+      marker.textContent = "degree " + degree;
+      fieldPosetEl.appendChild(marker);
+    }
 
     for (const node of FIELD_POSET_NODES) {
       const field = node.fieldId ? fieldById.get(node.fieldId) : null;
