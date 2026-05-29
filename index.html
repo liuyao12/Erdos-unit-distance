@@ -110,19 +110,85 @@
       text-decoration: underline;
     }
 
-    .status-bound {
-      white-space: nowrap;
-    }
-
     .status-top {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: minmax(0, 1fr) auto auto;
       gap: 8px;
       align-items: center;
     }
 
     .status-meta {
       min-width: 0;
+    }
+
+    .lower-bound-card,
+    .shown-distance {
+      min-width: 94px;
+      max-width: 118px;
+      min-height: 41px;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 5px 6px;
+      background: rgba(255, 255, 255, 0.64);
+      border: 1px solid rgba(20, 20, 20, 0.09);
+      border-radius: 5px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .status a.lower-bound-card {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 3px;
+      color: var(--ink);
+      font-weight: inherit;
+      text-decoration: none;
+      box-shadow: inset 2px 0 0 var(--blue);
+      transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    .status a.lower-bound-card:hover {
+      background: rgba(255, 255, 255, 0.9);
+      border-color: rgba(36, 54, 216, 0.24);
+      text-decoration: none;
+    }
+
+    .status a.lower-bound-card:focus-visible {
+      outline: 2px solid rgba(36, 54, 216, 0.32);
+      outline-offset: 2px;
+    }
+
+    .lower-bound-label {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .lower-bound-value {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+      color: var(--ink);
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+
+    .lower-bound-info {
+      flex: 0 0 auto;
+      width: 12px;
+      height: 12px;
+      color: var(--blue);
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     .distance-race {
@@ -267,15 +333,7 @@
       align-items: flex-end;
       justify-content: center;
       gap: 3px;
-      min-width: 94px;
-      max-width: 118px;
-      margin: 0;
-      padding: 5px 6px;
-      background: rgba(255, 255, 255, 0.64);
-      border: 1px solid rgba(20, 20, 20, 0.09);
-      border-radius: 5px;
       box-shadow: inset 2px 0 0 var(--race-color, #6f7f93);
-      font-variant-numeric: tabular-nums;
     }
 
     .shown-distance.selected {
@@ -737,6 +795,6 @@
 
   <div class="status" id="status"></div>
   <script src="unit_distance_bounds.js?v=20260529"></script>
-  <script src="app.js?v=20260529-degree-poset" defer></script>
+  <script src="app.js?v=20260529-bound-card" defer></script>
 </body>
 </html>
