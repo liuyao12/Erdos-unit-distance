@@ -327,6 +327,13 @@
     "#25a244",
     "#c026d3"
   ];
+  const LOWER_BOUND_DATA = window.UNIT_DISTANCE_LOWER_BOUNDS || null;
+  const LOWER_BOUND_ENTRIES = LOWER_BOUND_DATA
+    ? Object.keys(LOWER_BOUND_DATA.bounds || {})
+      .map((n) => ({ n: Number(n), lowerBound: Number(LOWER_BOUND_DATA.bounds[n]) }))
+      .filter((entry) => Number.isFinite(entry.n) && Number.isFinite(entry.lowerBound))
+      .sort((a, b) => a.n - b.n)
+    : [];
 
   const state = {
     width: 1,
@@ -1370,6 +1377,29 @@
     );
   }
 
+  function lowerBoundForPointCount(pointCount) {
+    let best = null;
+    for (const entry of LOWER_BOUND_ENTRIES) {
+      if (entry.n > pointCount) break;
+      if (!best || entry.lowerBound >= best.lowerBound) best = entry;
+    }
+    return best;
+  }
+
+  function lowerBoundLinkHtml(pointCount) {
+    const entry = lowerBoundForPointCount(pointCount);
+    if (!entry || !LOWER_BOUND_DATA) return "";
+
+    const sourceUrl = LOWER_BOUND_DATA.pageUrl || LOWER_BOUND_DATA.sourceUrl;
+    const inheritedText = entry.n === pointCount ? "" : " from n=" + entry.n;
+    const title = (LOWER_BOUND_DATA.sourceName || "Unit distance lower-bound table") +
+      inheritedText +
+      (LOWER_BOUND_DATA.lastModified ? "; last modified " + LOWER_BOUND_DATA.lastModified.slice(0, 10) : "");
+    return " <span class=\"status-bound\">· <a href=\"" + escapeAttribute(sourceUrl) +
+      "\" target=\"_blank\" rel=\"noopener noreferrer\" title=\"" + escapeAttribute(title) +
+      "\">u(n) ≥ " + formatNumber(entry.lowerBound) + "</a></span>";
+  }
+
   function isMobileFieldDrawer() {
     return window.matchMedia("(max-width: 720px)").matches;
   }
@@ -1876,7 +1906,7 @@
       "<div class=\"status-top\">" +
       "<div class=\"status-meta\">" +
       "<span class=\"field-heading\">" + formatFieldLabelHtml(field) + "</span><br>" +
-      "visible points: <strong>" + formatNumber(lensPoints) + "</strong><br>" +
+      "visible points: <strong>" + formatNumber(lensPoints) + "</strong>" + lowerBoundLinkHtml(lensPoints) + "<br>" +
       "field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong>" +
       "</div>" +
       shownDistanceHtml(field, distanceRace, activeDistance) +
