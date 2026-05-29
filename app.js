@@ -17,6 +17,7 @@
   const pointsButton = document.getElementById("points");
   const gridButton = document.getElementById("grid");
   const saveButton = document.getElementById("save");
+  const saveSvgButton = document.getElementById("saveSvg");
   const windowInput = document.getElementById("windowRadius");
   const windowLabel = document.getElementById("windowLabel");
 
@@ -778,6 +779,30 @@
     const g = parseInt(full.slice(3, 5), 16);
     const b = parseInt(full.slice(5, 7), 16);
     return "rgba(" + r + ", " + g + ", " + b + ", " + alpha + ")";
+  }
+
+  function svgColor(color, fallback) {
+    if (!color) return fallback;
+    if (color.startsWith("#")) return color;
+    const rgba = color.match(/rgba?\(([^)]+)\)/i);
+    if (!rgba) return fallback;
+    const parts = rgba[1].split(",").map((part) => part.trim());
+    if (parts.length < 3) return fallback;
+    const r = Math.max(0, Math.min(255, Math.round(Number(parts[0]))));
+    const g = Math.max(0, Math.min(255, Math.round(Number(parts[1]))));
+    const b = Math.max(0, Math.min(255, Math.round(Number(parts[2]))));
+    const hex = (value) => value.toString(16).padStart(2, "0");
+    return "#" + hex(r) + hex(g) + hex(b);
+  }
+
+  function svgOpacity(color, fallback) {
+    if (!color) return fallback;
+    const rgba = color.match(/rgba\(([^)]+)\)/i);
+    if (!rgba) return fallback;
+    const parts = rgba[1].split(",").map((part) => part.trim());
+    if (parts.length < 4) return fallback;
+    const alpha = Number(parts[3]);
+    return Number.isFinite(alpha) ? clamp(0, alpha, 1) : fallback;
   }
 
   function hashString(value) {
@@ -1616,6 +1641,114 @@
     }
   }
 
+  function lensPointSnapshot() {
+    const field = currentField();
+    const viewBounds = visibleBounds(24);
+    const dataset = ensureDataset(field, state.windowRadius, viewBounds);
+    const points = dataset.points;
+    const lens = lensScreenGeometry();
+    const center = screenToWorld(lens.x, lens.y);
+    const radius = lens.radius / state.scale;
+    const radiusSquared = radius * radius;
+    const indices = [];
+
+    for (let i = 0; i < points.length; i += 1) {
+      const p = points[i];
+      const dx = p.x - center.x;
+      const dy = p.y - center.y;
+      if (dx * dx + dy * dy <= radiusSquared + 1e-12) {
+        indices.push(i);
+      }
+    }
+
+    return { field, dataset, points, lens, center, radius, indices };
+  }
+
+  function currentLensDistanceEdges(snapshot) {
+    const distanceRace = buildDistanceRace(
+      snapshot.field,
+      snapshot.points,
+      snapshot.indices,
+      state.selectedDistanceKey
+    );
+    const activeDistance = distanceRace.selected || distanceRace.leader;
+    const edges = distanceRace.exact && activeDistance
+      ? buildDistanceEdges(snapshot.field, snapshot.points, snapshot.indices, activeDistance.key)
+      : [];
+    return { distanceRace, activeDistance, edges };
+  }
+
+  function pointToLensExport(point, snapshot, exportSize, padding) {
+    const scale = (exportSize - padding * 2) / (snapshot.radius * 2);
+    return {
+      x: padding + (point.x - snapshot.center.x + snapshot.radius) * scale,
+      y: padding + (snapshot.radius - (point.y - snapshot.center.y)) * scale
+    };
+  }
+
+  function exportLensSvg() {
+    const snapshot = lensPointSnapshot();
+    const { activeDistance, edges } = currentLensDistanceEdges(snapshot);
+    const exportSize = 1200;
+    const padding = 36;
+    const radius = (exportSize - padding * 2) / 2;
+    const center = exportSize / 2;
+    const pointRadius = Math.max(1.6, Math.min(5.5, radius / Math.max(60, snapshot.indices.length * 0.7)));
+    const lineWidth = Math.max(0.75, Math.min(2.25, pointRadius * 0.48));
+    const edgeStroke = activeDistance
+      ? svgColor(distanceColor(activeDistance), snapshot.field.edgeStroke)
+      : svgColor(snapshot.field.edgeStroke, "#6f7f93");
+    const edgeOpacity = 0.58;
+    const pointFill = svgColor(snapshot.field.pointFill, "#242424");
+    const pointStroke = svgColor(snapshot.field.pointStroke, "#111111");
+    const pointStrokeOpacity = svgOpacity(snapshot.field.pointStroke, 0.72);
+    const parts = [
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+      "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" + exportSize + "\" height=\"" + exportSize +
+        "\" viewBox=\"0 0 " + exportSize + " " + exportSize + "\" role=\"img\" aria-label=\"" +
+        escapeAttribute(snapshot.field.label + " point set inside lens") + "\">",
+      "<metadata>" +
+        escapeHtml(JSON.stringify({
+          field: snapshot.field.label,
+          points: snapshot.indices.length,
+          edges: edges.length,
+          radius: Number(snapshot.radius.toFixed(6))
+        })) +
+        "</metadata>",
+      "<defs><clipPath id=\"lens\"><circle cx=\"" + center + "\" cy=\"" + center + "\" r=\"" + radius + "\"/></clipPath></defs>",
+      "<g clip-path=\"url(#lens)\">"
+    ];
+
+    if (edges.length) {
+      parts.push("<g fill=\"none\" stroke=\"" + escapeAttribute(edgeStroke) + "\" stroke-opacity=\"" +
+        edgeOpacity + "\" stroke-width=\"" + lineWidth.toFixed(3) + "\" stroke-linecap=\"round\">");
+      for (const [i, j] of edges) {
+        const p = pointToLensExport(snapshot.points[i], snapshot, exportSize, padding);
+        const q = pointToLensExport(snapshot.points[j], snapshot, exportSize, padding);
+        parts.push("<path d=\"M " + p.x.toFixed(3) + " " + p.y.toFixed(3) +
+          " L " + q.x.toFixed(3) + " " + q.y.toFixed(3) + "\"/>");
+      }
+      parts.push("</g>");
+    }
+
+    parts.push("<g fill=\"" + escapeAttribute(pointFill) + "\" stroke=\"" + escapeAttribute(pointStroke) +
+      "\" stroke-opacity=\"" + pointStrokeOpacity + "\" stroke-width=\"" + Math.max(0.4, pointRadius * 0.22).toFixed(3) + "\">");
+    for (const index of snapshot.indices) {
+      const p = pointToLensExport(snapshot.points[index], snapshot, exportSize, padding);
+      parts.push("<circle cx=\"" + p.x.toFixed(3) + "\" cy=\"" + p.y.toFixed(3) +
+        "\" r=\"" + pointRadius.toFixed(3) + "\"/>");
+    }
+    parts.push("</g></g></svg>");
+
+    const blob = new Blob([parts.join("\n")], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.download = snapshot.field.id + "-lens-" + snapshot.indices.length + "-points.svg";
+    link.href = url;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
   function render() {
     state.dirty = false;
     const field = currentField();
@@ -2018,6 +2151,9 @@
     link.href = canvas.toDataURL("image/png");
     link.click();
   });
+  if (saveSvgButton) {
+    saveSvgButton.addEventListener("click", exportLensSvg);
+  }
 
   window.addEventListener("resize", resize);
   resize();

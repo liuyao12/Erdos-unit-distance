@@ -44,7 +44,7 @@ This is an illustration tool for selected number-field point sets. It is not try
 - Drag to pan.
 - Mouse wheel or trackpad scroll to zoom.
 - Use the left poset to change fields; on mobile, open it from the fields button in the toolbar.
-- Use the toolbar to toggle leader-distance edges, toggle points/grid, change the internal window radius, or export a PNG.
+- Use the toolbar to toggle leader-distance edges, toggle points/grid, change the internal window radius, export a PNG, or export the current lens as SVG.
 
 ## Files
 
