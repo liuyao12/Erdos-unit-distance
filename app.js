@@ -2197,6 +2197,7 @@
     svg.replaceChildren();
     svg.setAttribute("viewBox", "0 0 " + rect.width + " " + rect.height);
 
+    const selectedDownEdges = selectedFieldDownEdgeKeys();
     const nodeBoxes = new Map();
     for (const node of FIELD_POSET_NODES) {
       const element = fieldPosetEl.querySelector("[data-poset-node=\"" + node.id + "\"]");
@@ -2214,74 +2215,32 @@
       });
     }
 
-    function boundaryPoint(box, target, gap) {
-      const vx = target.x - box.cx;
-      const vy = target.y - box.cy;
-      const ax = Math.abs(vx);
-      const ay = Math.abs(vy);
-      const halfWidth = box.width / 2 + gap;
-      const halfHeight = box.height / 2 + gap;
-      const scaleX = ax > 0.001 ? halfWidth / ax : Infinity;
-      const scaleY = ay > 0.001 ? halfHeight / ay : Infinity;
-      const scale = Math.min(scaleX, scaleY);
-      if (!Number.isFinite(scale)) {
-        return { x: box.cx, y: box.cy };
-      }
+    function verticalPort(box, targetY, gap) {
+      const towardTop = targetY < box.cy;
       return {
-        x: box.cx + vx * scale,
-        y: box.cy + vy * scale
+        x: box.cx,
+        y: towardTop ? box.top - gap : box.bottom + gap
       };
-    }
-
-    function segmentProjection(point, start, vector, lengthSquared) {
-      if (lengthSquared <= 0.001) return 0;
-      return clamp(0, ((point.x - start.x) * vector.x + (point.y - start.y) * vector.y) / lengthSquared, 1);
     }
 
     for (let edgeIndex = 0; edgeIndex < FIELD_POSET_EDGES.length; edgeIndex += 1) {
       const [fromId, toId] = FIELD_POSET_EDGES[edgeIndex];
+      const edgeKey = fieldPosetEdgeKey(fromId, toId);
       const fromBox = nodeBoxes.get(fromId);
       const toBox = nodeBoxes.get(toId);
       if (!fromBox || !toBox) continue;
 
-      const start = boundaryPoint(fromBox, { x: toBox.cx, y: toBox.cy }, 4);
-      const end = boundaryPoint(toBox, { x: fromBox.cx, y: fromBox.cy }, 4);
+      const start = verticalPort(fromBox, toBox.cy, 3);
+      const end = verticalPort(toBox, fromBox.cy, 3);
       const dx = end.x - start.x;
       const dy = end.y - start.y;
       const length = Math.max(1, Math.hypot(dx, dy));
-      const lengthSquared = length * length;
-      const unitX = dx / length;
-      const unitY = dy / length;
-      const normalX = -dy / length;
-      const normalY = dx / length;
-      let direction = dx === 0 ? (edgeIndex % 2 === 0 ? 1 : -1) : Math.sign(dx);
-      let dodge = 0;
-
-      for (const [nodeId, box] of nodeBoxes) {
-        if (nodeId === fromId || nodeId === toId) continue;
-
-        const center = { x: box.cx, y: box.cy };
-        const projection = segmentProjection(center, start, { x: dx, y: dy }, lengthSquared);
-        if (projection <= 0.08 || projection >= 0.92) continue;
-
-        const closestX = start.x + dx * projection;
-        const closestY = start.y + dy * projection;
-        const offset = (center.x - closestX) * normalX + (center.y - closestY) * normalY;
-        const clearance = Math.hypot(box.width / 2, box.height / 2) + 7;
-        if (Math.abs(offset) >= clearance) continue;
-
-        if (Math.abs(offset) > 0.001 && Math.sign(offset) === direction) {
-          direction *= -1;
-        }
-        dodge = Math.max(dodge, clearance - Math.abs(offset) + 8);
-      }
-
-      const bend = direction * clamp(8, Math.abs(dx) * 0.1 + Math.abs(dy) * 0.035 + dodge * 0.5, 30);
-      const terminal = clamp(18, length * 0.22, 42);
-      const c1x = start.x + unitX * terminal + normalX * bend;
-      const c1y = start.y + unitY * terminal + normalY * bend;
-      const c2x = end.x - unitX * terminal + normalX * bend;
-      const c2y = end.y - unitY * terminal + normalY * bend;
+      const verticalDirection = dy === 0 ? -1 : Math.sign(dy);
+      const terminal = clamp(26, Math.abs(dy) * 0.42 + Math.abs(dx) * 0.06, Math.min(86, length * 0.7));
+      const c1x = start.x;
+      const c1y = start.y + verticalDirection * terminal;
+      const c2x = end.x;
+      const c2y = end.y - verticalDirection * terminal;
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
       path.setAttribute(
         "d",
@@ -2290,8 +2249,41 @@
         ", " + c2x.toFixed(1) + " " + c2y.toFixed(1) +
         ", " + end.x.toFixed(1) + " " + end.y.toFixed(1)
       );
+      path.dataset.edgeKey = edgeKey;
+      path.classList.toggle("selected-down", selectedDownEdges.has(edgeKey));
       svg.appendChild(path);
     }
+  }
+
+  function fieldPosetEdgeKey(fromId, toId) {
+    return fromId + ">" + toId;
+  }
+
+  function selectedFieldPosetNodeId() {
+    const field = currentField();
+    const node = FIELD_POSET_NODES.find((candidate) => candidate.fieldId === field.id);
+    return node ? node.id : null;
+  }
+
+  function selectedFieldDownEdgeKeys() {
+    const selectedNodeId = selectedFieldPosetNodeId();
+    const edgeKeys = new Set();
+    if (!selectedNodeId) return edgeKeys;
+
+    const stack = [selectedNodeId];
+    const seen = new Set(stack);
+    while (stack.length) {
+      const nodeId = stack.pop();
+      for (const [lowerId, upperId] of FIELD_POSET_EDGES) {
+        if (upperId !== nodeId) continue;
+        edgeKeys.add(fieldPosetEdgeKey(lowerId, upperId));
+        if (!seen.has(lowerId)) {
+          seen.add(lowerId);
+          stack.push(lowerId);
+        }
+      }
+    }
+    return edgeKeys;
   }
 
   function updateFieldPoset() {
@@ -2301,6 +2293,11 @@
       const selected = button.dataset.fieldId === field.id;
       button.classList.toggle("selected", selected);
       button.setAttribute("aria-pressed", selected ? "true" : "false");
+    }
+
+    const selectedDownEdges = selectedFieldDownEdgeKeys();
+    for (const path of fieldPosetEl.querySelectorAll(".poset-lines path[data-edge-key]")) {
+      path.classList.toggle("selected-down", selectedDownEdges.has(path.dataset.edgeKey));
     }
   }
 
