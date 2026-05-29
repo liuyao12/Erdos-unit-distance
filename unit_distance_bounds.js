@@ -4,7 +4,7 @@ window.UNIT_DISTANCE_LOWER_BOUNDS = Object.freeze({
   pageUrl: "https://users.renyi.hu/~kjmoore/units.html",
   retrieved: "2026-05-29",
   lastModified: "2025-10-03T11:03:44Z",
-  note: "Sparse lower-bound table for u(n). For missing n, the app uses the best stored row with m <= n, by monotonicity.",
+  note: "Sparse lower-bound table for u(n). For missing n, the app applies elementary derived lower-bound rules such as one-point +2 extension and two-configuration gluing.",
   bounds: {
     "1": 0,
     "2": 1,

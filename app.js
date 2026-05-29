@@ -338,6 +338,8 @@
       .filter((entry) => Number.isFinite(entry.n) && Number.isFinite(entry.lowerBound))
       .sort((a, b) => a.n - b.n)
     : [];
+  const LOWER_BOUND_EXACT = new Map(LOWER_BOUND_ENTRIES.map((entry) => [entry.n, entry.lowerBound]));
+  const LOWER_BOUND_CACHE = [null];
 
   const state = {
     width: 1,
@@ -1405,12 +1407,87 @@
   }
 
   function lowerBoundForPointCount(pointCount) {
-    let best = null;
-    for (const entry of LOWER_BOUND_ENTRIES) {
-      if (entry.n > pointCount) break;
-      if (!best || entry.lowerBound >= best.lowerBound) best = entry;
+    const n = Math.max(0, Math.floor(pointCount));
+    ensureLowerBoundCache(n);
+    return LOWER_BOUND_CACHE[n] || null;
+  }
+
+  function ensureLowerBoundCache(maxN) {
+    if (!LOWER_BOUND_DATA) return;
+
+    for (let n = LOWER_BOUND_CACHE.length; n <= maxN; n += 1) {
+      let best = null;
+      const exactLowerBound = LOWER_BOUND_EXACT.get(n);
+      if (Number.isFinite(exactLowerBound)) {
+        best = {
+          n,
+          lowerBound: exactLowerBound,
+          exact: true,
+          method: "table"
+        };
+      }
+
+      const previous = LOWER_BOUND_CACHE[n - 1];
+      if (n >= 3 && previous && previous.lowerBound > 0) {
+        best = betterLowerBound(best, {
+          n,
+          lowerBound: previous.lowerBound + 2,
+          exact: false,
+          method: "apex",
+          source: previous
+        });
+      }
+
+      for (let leftN = 2; leftN <= Math.floor(n / 2); leftN += 1) {
+        const rightN = n - leftN;
+        const left = LOWER_BOUND_CACHE[leftN];
+        const right = LOWER_BOUND_CACHE[rightN];
+        if (!left || !right || left.lowerBound <= 0 || right.lowerBound <= 0) continue;
+        best = betterLowerBound(best, {
+          n,
+          lowerBound: left.lowerBound + right.lowerBound + 2,
+          exact: false,
+          method: "glue",
+          left,
+          right
+        });
+      }
+
+      LOWER_BOUND_CACHE[n] = best;
     }
-    return best;
+  }
+
+  function betterLowerBound(current, candidate) {
+    if (!candidate) return current;
+    if (!current) return candidate;
+    if (candidate.lowerBound !== current.lowerBound) {
+      return candidate.lowerBound > current.lowerBound ? candidate : current;
+    }
+    if (candidate.exact !== current.exact) return candidate.exact ? candidate : current;
+    if (candidate.method === "apex" && current.method !== "apex") return candidate;
+    return current;
+  }
+
+  function lowerBoundTitle(entry) {
+    const sourceName = LOWER_BOUND_DATA.sourceName || "Unit distance lower-bound table";
+    const modifiedText = LOWER_BOUND_DATA.lastModified
+      ? "; table last modified " + LOWER_BOUND_DATA.lastModified.slice(0, 10)
+      : "";
+    if (entry.exact) {
+      return sourceName + modifiedText;
+    }
+    if (entry.method === "apex") {
+      return "Derived from the table and generic rules: u(" + entry.source.n + ") >= " +
+        formatNumber(entry.source.lowerBound) +
+        ", then add one point making two new unit distances; source " + sourceName + modifiedText;
+    }
+    if (entry.method === "glue") {
+      return "Derived from the table and generic rules: u(" + entry.left.n + ") >= " +
+        formatNumber(entry.left.lowerBound) + " and u(" + entry.right.n + ") >= " +
+        formatNumber(entry.right.lowerBound) +
+        ", then glue two configurations with two cross unit distances; source " + sourceName + modifiedText;
+    }
+    return sourceName + modifiedText;
   }
 
   function lowerBoundCardHtml(pointCount) {
@@ -1418,16 +1495,13 @@
     if (!entry || !LOWER_BOUND_DATA) return "";
 
     const sourceUrl = LOWER_BOUND_DATA.pageUrl || LOWER_BOUND_DATA.sourceUrl;
-    const inheritedText = entry.n === pointCount ? "" : " from n=" + entry.n;
-    const title = (LOWER_BOUND_DATA.sourceName || "Unit distance lower-bound table") +
-      inheritedText +
-      (LOWER_BOUND_DATA.lastModified ? "; last modified " + LOWER_BOUND_DATA.lastModified.slice(0, 10) : "");
+    const title = lowerBoundTitle(entry);
     const ariaLabel = "Source for lower bound u(n) at least " + formatNumber(entry.lowerBound) +
-      (entry.n === pointCount ? "" : ", inherited from n equals " + entry.n);
+      (entry.exact ? "" : ", derived from generic construction rules");
     return "<a class=\"lower-bound-card\" href=\"" + escapeAttribute(sourceUrl) +
       "\" target=\"_blank\" rel=\"noopener noreferrer\" title=\"" + escapeAttribute(title) +
       "\" aria-label=\"" + escapeAttribute(ariaLabel) + "\">" +
-      "<span class=\"lower-bound-label\">known record</span>" +
+      "<span class=\"lower-bound-label\">" + (entry.exact ? "known record" : "derived bound") + "</span>" +
       "<span class=\"lower-bound-value\">u(n) &ge; " + formatNumber(entry.lowerBound) +
       "<svg class=\"lower-bound-info\" viewBox=\"0 0 24 24\" aria-hidden=\"true\">" +
       "<circle cx=\"12\" cy=\"12\" r=\"9\"></circle>" +
