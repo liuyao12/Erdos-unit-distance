@@ -59,7 +59,7 @@
       label: "Q(zeta_3)",
       shortLabel: "Z[zeta_3]",
       generator: "ζ",
-      generatorHtml: "ζ<sub>3</sub>",
+      generatorHtml: "ζ_3",
       relationText: "Z[ζ], ζ³ = 1",
       m: 3,
       fullRing: true,
@@ -182,7 +182,7 @@
       type: "basis",
       label: "Q(sqrt(-2), sqrt(-3))",
       shortLabel: "Z[sqrt(-2), sqrt(-3)]",
-      generatorHtml: "√-2, √-3",
+      generatorHtml: "√-2,√-3",
       basisLabels: ["1", "α", "β", "αβ"],
       definitionText: "α = √-2, β = √-3",
       relationText: "Z[α, β], α² = -2, β² = -3",
@@ -272,9 +272,9 @@
     { id: "eisenstein", fieldId: "eisenstein", x: 50 },
     { id: "sqrtMinus2", fieldId: "sqrtMinus2", x: 80 },
     { id: "zeta5", fieldId: "zeta5", x: 26 },
-    { id: "zeta8", fieldId: "zeta8", x: 43 },
-    { id: "zeta12", fieldId: "zeta12", x: 60 },
-    { id: "sqrtMinus2SqrtMinus3", fieldId: "sqrtMinus2SqrtMinus3", x: 82 },
+    { id: "zeta8", fieldId: "zeta8", x: 44 },
+    { id: "zeta12", fieldId: "zeta12", x: 63 },
+    { id: "sqrtMinus2SqrtMinus3", fieldId: "sqrtMinus2SqrtMinus3", x: 86 },
     { id: "zeta7", fieldId: "zeta7", x: 26 },
     { id: "zeta9", fieldId: "zeta9", x: 47 },
     { id: "zeta18", fieldId: "zeta18", x: 69 },
@@ -1093,8 +1093,13 @@
   }
 
   function formatFieldLabelHtml(field) {
-    const generator = field.generatorHtml || field.generator || "ζ<sub>" + field.m + "</sub>";
+    const generator = field.generatorHtml || field.generator || "ζ_" + field.m;
     return "<span class=\"field-label\"><strong>Q</strong>(" + generator + ")</span>";
+  }
+
+  function fieldHeadingHtml(field) {
+    return formatFieldLabelHtml(field) +
+      " <span class=\"field-degree-inline\">degree " + fieldDegree(field) + "</span>";
   }
 
   function fieldRelationText(field) {
@@ -2018,8 +2023,7 @@
     statusEl.innerHTML =
       "<div class=\"status-top\">" +
       "<div class=\"status-meta\">" +
-      "<span class=\"field-heading\">" + formatFieldLabelHtml(field) + "</span><br>" +
-      "degree: <strong>" + fieldDegree(field) + "</strong><br>" +
+      "<span class=\"field-heading\">" + fieldHeadingHtml(field) + "</span><br>" +
       "visible points: n=<strong>" + formatNumber(lensPoints) + "</strong><br>" +
       "field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong>" +
       "</div>" +
