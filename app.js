@@ -4,9 +4,11 @@
   const toolbarEl = document.querySelector(".toolbar");
   const statusEl = document.getElementById("status");
   const tooltipEl = document.getElementById("pointTooltip");
-  const fieldMenu = document.querySelector(".select-wrap");
-  const fieldSelect = document.getElementById("fieldSelect");
-  const fieldOptions = document.getElementById("fieldOptions");
+  const fieldPanelEl = document.querySelector(".field-panel");
+  const fieldPosetEl = document.getElementById("fieldPoset");
+  const fieldPanelToggleButton = document.getElementById("fieldPanelToggle");
+  const fieldPanelCloseButton = document.getElementById("fieldPanelClose");
+  const fieldBackdropEl = document.getElementById("fieldBackdrop");
   const windowControl = document.querySelector(".slider-wrap");
   const homeButton = document.getElementById("home");
   const zoomInButton = document.getElementById("zoomIn");
@@ -68,6 +70,36 @@
       pointFill: "#b45b3e",
       pointStroke: "rgba(128, 62, 42, 0.72)",
       edgeStroke: "rgba(161, 71, 48, 0.3)"
+    },
+    {
+      id: "sqrtMinus2",
+      type: "basis",
+      label: "Q(sqrt(-2))",
+      shortLabel: "Z[sqrt(-2)]",
+      generatorHtml: "√-2",
+      basisLabels: ["1", "α"],
+      definitionText: "α = √-2",
+      relationText: "Z[α], α² = -2",
+      degree: 2,
+      embeddings: [
+        [
+          { re: 1, im: 0 },
+          { re: 0, im: Math.SQRT2 }
+        ]
+      ],
+      conjugateSigns: [1, -1],
+      productTable: {
+        "1,1": [-2, 0]
+      },
+      fullRing: true,
+      defaultLensWorldRadius: 8,
+      defaultWindow: 0,
+      windowMin: 0,
+      windowMax: 1,
+      windowStep: 1,
+      pointFill: "#1687a7",
+      pointStroke: "rgba(18, 91, 111, 0.72)",
+      edgeStroke: "rgba(14, 126, 158, 0.3)"
     },
     {
       id: "zeta5",
@@ -145,6 +177,48 @@
       edgeStroke: "rgba(36, 54, 216, 0.35)"
     },
     {
+      id: "sqrtMinus2SqrtMinus3",
+      type: "basis",
+      label: "Q(sqrt(-2), sqrt(-3))",
+      shortLabel: "Z[sqrt(-2), sqrt(-3)]",
+      generatorHtml: "√-2, √-3",
+      basisLabels: ["1", "α", "β", "αβ"],
+      definitionText: "α = √-2, β = √-3",
+      relationText: "Z[α, β], α² = -2, β² = -3",
+      degree: 4,
+      embeddings: [
+        [
+          { re: 1, im: 0 },
+          { re: 0, im: Math.SQRT2 },
+          { re: 0, im: Math.sqrt(3) },
+          { re: -Math.sqrt(6), im: 0 }
+        ],
+        [
+          { re: 1, im: 0 },
+          { re: 0, im: Math.SQRT2 },
+          { re: 0, im: -Math.sqrt(3) },
+          { re: Math.sqrt(6), im: 0 }
+        ]
+      ],
+      conjugateSigns: [1, -1, -1, 1],
+      productTable: {
+        "1,1": [-2, 0, 0, 0],
+        "1,2": [0, 0, 0, 1],
+        "1,3": [0, 0, -2, 0],
+        "2,2": [-3, 0, 0, 0],
+        "2,3": [0, -3, 0, 0],
+        "3,3": [6, 0, 0, 0]
+      },
+      defaultLensWorldRadius: 2.7,
+      defaultWindow: 2.4,
+      windowMin: 0.8,
+      windowMax: 6,
+      windowStep: 0.1,
+      pointFill: "#72751e",
+      pointStroke: "rgba(83, 85, 24, 0.72)",
+      edgeStroke: "rgba(112, 118, 30, 0.32)"
+    },
+    {
       id: "zeta18",
       type: "cyclotomic",
       label: "Q(zeta_18)",
@@ -189,6 +263,43 @@
       pointStroke: "rgba(35, 54, 139, 0.7)",
       edgeStroke: "rgba(57, 84, 184, 0.28)"
     }
+  ];
+
+  const FIELD_POSET_NODES = [
+    { id: "rational", labelHtml: "<span class=\"field-label\"><strong>Q</strong></span>", x: 50, y: 90, disabled: true },
+    { id: "gaussian", fieldId: "gaussian", x: 18, y: 72 },
+    { id: "eisenstein", fieldId: "eisenstein", x: 50, y: 72 },
+    { id: "sqrtMinus2", fieldId: "sqrtMinus2", x: 82, y: 72 },
+    { id: "zeta5", fieldId: "zeta5", x: 10, y: 54 },
+    { id: "zeta8", fieldId: "zeta8", x: 31, y: 54 },
+    { id: "zeta12", fieldId: "zeta12", x: 52, y: 54 },
+    { id: "sqrtMinus2SqrtMinus3", fieldId: "sqrtMinus2SqrtMinus3", x: 77, y: 54 },
+    { id: "zeta7", fieldId: "zeta7", x: 12, y: 36 },
+    { id: "zeta9", fieldId: "zeta9", x: 38, y: 36 },
+    { id: "zeta18", fieldId: "zeta18", x: 58, y: 36 },
+    { id: "zeta30", fieldId: "zeta30", x: 82, y: 36 },
+    { id: "zeta24", fieldId: "zeta24", x: 56, y: 14 }
+  ];
+
+  const FIELD_POSET_EDGES = [
+    ["rational", "gaussian"],
+    ["rational", "eisenstein"],
+    ["rational", "sqrtMinus2"],
+    ["rational", "zeta5"],
+    ["rational", "zeta7"],
+    ["gaussian", "zeta8"],
+    ["gaussian", "zeta12"],
+    ["eisenstein", "zeta12"],
+    ["eisenstein", "zeta9"],
+    ["eisenstein", "zeta18"],
+    ["eisenstein", "sqrtMinus2SqrtMinus3"],
+    ["eisenstein", "zeta30"],
+    ["sqrtMinus2", "zeta8"],
+    ["sqrtMinus2", "sqrtMinus2SqrtMinus3"],
+    ["zeta5", "zeta30"],
+    ["zeta8", "zeta24"],
+    ["zeta12", "zeta24"],
+    ["sqrtMinus2SqrtMinus3", "zeta24"]
   ];
 
   const fieldById = new Map(FIELDS.map((field) => [field.id, field]));
@@ -280,10 +391,12 @@
   }
 
   function fieldDegree(field) {
+    if (field.degree) return field.degree;
     return PHI[field.m].length - 1;
   }
 
   function fieldEmbeddingValues(field) {
+    if (field.embeddings) return field.embeddings;
     return embeddingValues(field.m);
   }
 
@@ -536,7 +649,12 @@
 
       if (accepted) {
         const pointCoeffs = coeffs.slice();
-        points.push({ x, y, coeffs: pointCoeffs, rootPower: rootOfUnityPower(field, pointCoeffs) });
+        points.push({
+          x,
+          y,
+          coeffs: pointCoeffs,
+          rootPower: field.type === "cyclotomic" ? rootOfUnityPower(field, pointCoeffs) : null
+        });
         minX = Math.min(minX, x);
         minY = Math.min(minY, y);
         maxX = Math.max(maxX, x);
@@ -697,9 +815,56 @@
     return coeffs.map((coefficient) => sign * coefficient).join(",");
   }
 
+  function basisProductCoefficients(field, leftIndex, rightIndex) {
+    const degree = fieldDegree(field);
+    const coeffs = new Array(degree).fill(0);
+    if (leftIndex === 0) {
+      coeffs[rightIndex] = 1;
+      return coeffs;
+    }
+    if (rightIndex === 0) {
+      coeffs[leftIndex] = 1;
+      return coeffs;
+    }
+
+    const direct = leftIndex + "," + rightIndex;
+    const reverse = rightIndex + "," + leftIndex;
+    const product = field.productTable[direct] || field.productTable[reverse];
+    if (!product) {
+      throw new Error("Missing product table entry for " + field.id + ": " + direct);
+    }
+    return product;
+  }
+
+  function multiplyBasisCoefficients(field, leftCoeffs, rightCoeffs) {
+    const degree = fieldDegree(field);
+    const coeffs = new Array(degree).fill(0);
+    for (let i = 0; i < degree; i += 1) {
+      const left = leftCoeffs[i];
+      if (!left) continue;
+      for (let j = 0; j < degree; j += 1) {
+        const right = rightCoeffs[j];
+        if (!right) continue;
+        const product = basisProductCoefficients(field, i, j);
+        const scale = left * right;
+        for (let k = 0; k < degree; k += 1) {
+          coeffs[k] += scale * product[k];
+        }
+      }
+    }
+    return coeffs;
+  }
+
   function squaredDistanceCoefficientKey(field, diffCoeffs) {
     const degree = fieldDegree(field);
     const coeffs = new Array(degree).fill(0);
+
+    if (field.productTable && field.conjugateSigns) {
+      const conjugateCoeffs = diffCoeffs.map((coefficient, index) => {
+        return coefficient * field.conjugateSigns[index];
+      });
+      return "alg:" + coefficientKey(multiplyBasisCoefficients(field, diffCoeffs, conjugateCoeffs));
+    }
 
     for (let i = 0; i < degree; i += 1) {
       const left = diffCoeffs[i];
@@ -782,7 +947,12 @@
     return generator + superscriptNumber(power);
   }
 
-  function formatCyclotomicInteger(field, coeffs) {
+  function formatBasisElement(field, index) {
+    if (field.type === "cyclotomic") return formatZetaPower(field, index);
+    return field.basisLabels && field.basisLabels[index] ? field.basisLabels[index] : "e" + index;
+  }
+
+  function formatFieldInteger(field, coeffs) {
     const terms = [];
     for (let i = 0; i < coeffs.length; i += 1) {
       const coefficient = coeffs[i];
@@ -793,7 +963,7 @@
       if (i === 0) {
         body = String(magnitude);
       } else {
-        const basis = formatZetaPower(field, i);
+        const basis = formatBasisElement(field, i);
         body = magnitude === 1 ? basis : magnitude + " " + basis;
       }
 
@@ -869,6 +1039,7 @@
   }
 
   function zetaDefinitionText(field) {
+    if (field.definitionText) return field.definitionText;
     if (field.id === "gaussian") return "i = √-1";
     return "ζ = exp(2πi/" + field.m + ")";
   }
@@ -932,9 +1103,6 @@
   function nearestPointAt(sx, sy) {
     const dataset = state.dataset;
     if (!dataset || !state.showPoints || state.dragging) return null;
-
-    const field = currentField();
-    if (field.type !== "cyclotomic") return null;
 
     const world = screenToWorld(sx, sy);
     const maxWorldDistance = tooltipHitRadius() / state.scale;
@@ -1007,7 +1175,7 @@
       const noteEl = document.createElement("div");
       expressionEl.className = "tooltip-expression";
       noteEl.className = "tooltip-note";
-      expressionEl.textContent = formatCyclotomicInteger(field, point.coeffs);
+      expressionEl.textContent = formatFieldInteger(field, point.coeffs);
       noteEl.textContent = zetaDefinitionText(field);
       tooltipEl.replaceChildren(expressionEl, noteEl);
       state.hoverPoint = point;
@@ -1177,6 +1345,33 @@
     );
   }
 
+  function isMobileFieldDrawer() {
+    return window.matchMedia("(max-width: 720px)").matches;
+  }
+
+  function setFieldPanelOpen(open) {
+    if (!fieldPanelEl) return;
+    const shouldOpen = Boolean(open);
+    fieldPanelEl.classList.toggle("open", shouldOpen);
+    if (fieldBackdropEl) {
+      fieldBackdropEl.classList.toggle("visible", shouldOpen);
+    }
+    if (fieldPanelToggleButton) {
+      fieldPanelToggleButton.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+    }
+    if (shouldOpen) {
+      requestAnimationFrame(renderFieldPosetEdges);
+    }
+  }
+
+  function toggleFieldPanel() {
+    setFieldPanelOpen(!fieldPanelEl || !fieldPanelEl.classList.contains("open"));
+  }
+
+  function closeFieldPanel() {
+    setFieldPanelOpen(false);
+  }
+
   function lensScreenGeometry() {
     const margin = 16;
     let left = margin;
@@ -1188,6 +1383,15 @@
       const rect = toolbarEl.getBoundingClientRect();
       if (rect.width > 0 && rect.height > 0) {
         top = Math.max(top, Math.min(state.height - margin, rect.bottom + margin));
+      }
+    }
+
+    if (fieldPanelEl && !isMobileFieldDrawer()) {
+      const rect = fieldPanelEl.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        if (rect.left <= margin * 2) {
+          left = Math.max(left, Math.min(state.width - margin, rect.right + margin));
+        }
       }
     }
 
@@ -1224,7 +1428,9 @@
     canvas.style.width = state.width + "px";
     canvas.style.height = state.height + "px";
     ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+    if (!isMobileFieldDrawer()) closeFieldPanel();
     state.dirty = true;
+    requestAnimationFrame(renderFieldPosetEdges);
     requestDraw();
   }
 
@@ -1592,7 +1798,7 @@
     } else {
       windowLabel.textContent = "W=" + state.windowRadius.toFixed(1);
     }
-    updateFieldPicker();
+    updateFieldPoset();
     state.dataset = null;
     fitInitial();
   }
@@ -1607,55 +1813,89 @@
   }
 
   function initControls() {
-    for (const field of FIELDS) {
-      const option = document.createElement("button");
-      option.type = "button";
-      option.className = "field-option";
-      option.dataset.fieldId = field.id;
-      option.setAttribute("role", "option");
-      option.innerHTML = formatFieldLabelHtml(field);
-      option.addEventListener("click", () => {
-        closeFieldMenu();
-        setField(field.id);
-        fieldSelect.focus();
-      });
-      fieldOptions.appendChild(option);
-    }
+    renderFieldPoset();
     setField(state.fieldId);
   }
 
-  function updateFieldPicker() {
-    const field = currentField();
-    fieldSelect.innerHTML = formatFieldLabelHtml(field);
-    for (const option of fieldOptions.querySelectorAll(".field-option")) {
-      const selected = option.dataset.fieldId === field.id;
-      option.classList.toggle("selected", selected);
-      option.setAttribute("aria-selected", selected ? "true" : "false");
+  function renderFieldPoset() {
+    if (!fieldPosetEl) return;
+
+    const lines = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    lines.classList.add("poset-lines");
+    lines.setAttribute("aria-hidden", "true");
+    fieldPosetEl.replaceChildren(lines);
+
+    for (const node of FIELD_POSET_NODES) {
+      const field = node.fieldId ? fieldById.get(node.fieldId) : null;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "field-node";
+      button.dataset.posetNode = node.id;
+      button.style.setProperty("--x", node.x + "%");
+      button.style.setProperty("--y", node.y + "%");
+      button.innerHTML = node.labelHtml || formatFieldLabelHtml(field);
+      button.title = field ? fieldRelationText(field) : "Q";
+      if (field) {
+        button.dataset.fieldId = field.id;
+        button.setAttribute("aria-label", field.label);
+        button.setAttribute("aria-pressed", "false");
+        button.addEventListener("click", () => {
+          setField(field.id);
+          if (isMobileFieldDrawer()) closeFieldPanel();
+        });
+      } else {
+        button.disabled = true;
+        button.setAttribute("aria-label", "Q");
+      }
+      fieldPosetEl.appendChild(button);
+    }
+
+    updateFieldPoset();
+    requestAnimationFrame(renderFieldPosetEdges);
+  }
+
+  function renderFieldPosetEdges() {
+    if (!fieldPosetEl) return;
+
+    const svg = fieldPosetEl.querySelector(".poset-lines");
+    if (!svg) return;
+
+    const rect = fieldPosetEl.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    svg.replaceChildren();
+    svg.setAttribute("viewBox", "0 0 " + rect.width + " " + rect.height);
+
+    for (const [fromId, toId] of FIELD_POSET_EDGES) {
+      const from = fieldPosetEl.querySelector("[data-poset-node=\"" + fromId + "\"]");
+      const to = fieldPosetEl.querySelector("[data-poset-node=\"" + toId + "\"]");
+      if (!from || !to) continue;
+
+      const fromRect = from.getBoundingClientRect();
+      const toRect = to.getBoundingClientRect();
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", fromRect.left + fromRect.width / 2 - rect.left);
+      line.setAttribute("y1", fromRect.top + fromRect.height / 2 - rect.top);
+      line.setAttribute("x2", toRect.left + toRect.width / 2 - rect.left);
+      line.setAttribute("y2", toRect.top + toRect.height / 2 - rect.top);
+      svg.appendChild(line);
     }
   }
 
-  function openFieldMenu() {
-    fieldOptions.classList.add("open");
-    fieldSelect.setAttribute("aria-expanded", "true");
-  }
-
-  function closeFieldMenu() {
-    fieldOptions.classList.remove("open");
-    fieldSelect.setAttribute("aria-expanded", "false");
+  function updateFieldPoset() {
+    if (!fieldPosetEl) return;
+    const field = currentField();
+    for (const button of fieldPosetEl.querySelectorAll(".field-node[data-field-id]")) {
+      const selected = button.dataset.fieldId === field.id;
+      button.classList.toggle("selected", selected);
+      button.setAttribute("aria-pressed", selected ? "true" : "false");
+    }
   }
 
   function toggleSelectedDistance(key) {
     state.selectedDistanceKey = state.selectedDistanceKey === key ? null : key;
     state.dirty = true;
     requestDraw();
-  }
-
-  function toggleFieldMenu() {
-    if (fieldOptions.classList.contains("open")) {
-      closeFieldMenu();
-    } else {
-      openFieldMenu();
-    }
   }
 
   canvas.addEventListener("pointerdown", (event) => {
@@ -1705,32 +1945,17 @@
     zoomAtLensCenter(Math.exp(-event.deltaY * 0.001));
   }, { passive: false });
 
-  fieldSelect.addEventListener("click", toggleFieldMenu);
-  fieldSelect.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      closeFieldMenu();
-    } else if (event.key === "Enter" || event.key === " " || event.key === "ArrowDown") {
-      event.preventDefault();
-      openFieldMenu();
-      const selected = fieldOptions.querySelector(".field-option.selected");
-      if (selected) selected.focus();
-    }
-  });
-  fieldOptions.addEventListener("keydown", (event) => {
-    const options = Array.from(fieldOptions.querySelectorAll(".field-option"));
-    const index = options.indexOf(document.activeElement);
-    if (event.key === "Escape") {
-      closeFieldMenu();
-      fieldSelect.focus();
-    } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-      event.preventDefault();
-      const direction = event.key === "ArrowDown" ? 1 : -1;
-      const next = options[(Math.max(0, index) + direction + options.length) % options.length];
-      next.focus();
-    }
-  });
-  document.addEventListener("click", (event) => {
-    if (!fieldMenu.contains(event.target)) closeFieldMenu();
+  if (fieldPanelToggleButton) {
+    fieldPanelToggleButton.addEventListener("click", toggleFieldPanel);
+  }
+  if (fieldPanelCloseButton) {
+    fieldPanelCloseButton.addEventListener("click", closeFieldPanel);
+  }
+  if (fieldBackdropEl) {
+    fieldBackdropEl.addEventListener("click", closeFieldPanel);
+  }
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeFieldPanel();
   });
   statusEl.addEventListener("click", (event) => {
     const row = event.target.closest(".race-row[data-distance-key]");
