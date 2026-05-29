@@ -525,6 +525,24 @@
       vector-effect: non-scaling-stroke;
     }
 
+    .degree-marker {
+      position: absolute;
+      left: 2px;
+      top: var(--y);
+      z-index: 0;
+      width: 48px;
+      transform: translateY(-50%);
+      color: rgba(20, 20, 20, 0.42);
+      font-size: 9px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: 0;
+      pointer-events: none;
+      text-align: left;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
     .field-node {
       position: absolute;
       left: var(--x);
@@ -537,7 +555,7 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 4px 9px;
+      padding: 4px 7px;
       transform: translate(-50%, -50%);
       color: #242424;
       font: 650 11px/1.05 Inter, ui-sans-serif, system-ui, sans-serif;
@@ -795,6 +813,6 @@
 
   <div class="status" id="status"></div>
   <script src="unit_distance_bounds.js?v=20260529-derived-rules"></script>
-  <script src="app.js?v=20260529-derived-rules" defer></script>
+  <script src="app.js?v=20260529-degree-labels" defer></script>
 </body>
 </html>
