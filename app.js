@@ -1413,7 +1413,7 @@
     return best;
   }
 
-  function lowerBoundLinkHtml(pointCount) {
+  function lowerBoundCardHtml(pointCount) {
     const entry = lowerBoundForPointCount(pointCount);
     if (!entry || !LOWER_BOUND_DATA) return "";
 
@@ -1422,9 +1422,19 @@
     const title = (LOWER_BOUND_DATA.sourceName || "Unit distance lower-bound table") +
       inheritedText +
       (LOWER_BOUND_DATA.lastModified ? "; last modified " + LOWER_BOUND_DATA.lastModified.slice(0, 10) : "");
-    return " <span class=\"status-bound\">· <a href=\"" + escapeAttribute(sourceUrl) +
+    const ariaLabel = "Source for lower bound u(n) at least " + formatNumber(entry.lowerBound) +
+      (entry.n === pointCount ? "" : ", inherited from n equals " + entry.n);
+    return "<a class=\"lower-bound-card\" href=\"" + escapeAttribute(sourceUrl) +
       "\" target=\"_blank\" rel=\"noopener noreferrer\" title=\"" + escapeAttribute(title) +
-      "\">u(n) ≥ " + formatNumber(entry.lowerBound) + "</a></span>";
+      "\" aria-label=\"" + escapeAttribute(ariaLabel) + "\">" +
+      "<span class=\"lower-bound-label\">u(n) &ge;</span>" +
+      "<span class=\"lower-bound-value\">" + formatNumber(entry.lowerBound) +
+      "<svg class=\"lower-bound-info\" viewBox=\"0 0 24 24\" aria-hidden=\"true\">" +
+      "<circle cx=\"12\" cy=\"12\" r=\"9\"></circle>" +
+      "<path d=\"M12 11v5\"></path>" +
+      "<path d=\"M12 8h.01\"></path>" +
+      "</svg></span>" +
+      "</a>";
   }
 
   function isMobileFieldDrawer() {
@@ -1933,9 +1943,10 @@
       "<div class=\"status-top\">" +
       "<div class=\"status-meta\">" +
       "<span class=\"field-heading\">" + formatFieldLabelHtml(field) + "</span><br>" +
-      "visible points: <strong>" + formatNumber(lensPoints) + "</strong>" + lowerBoundLinkHtml(lensPoints) + "<br>" +
+      "visible points: <strong>" + formatNumber(lensPoints) + "</strong><br>" +
       "field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong>" +
       "</div>" +
+      lowerBoundCardHtml(lensPoints) +
       shownDistanceHtml(field, distanceRace, activeDistance) +
       "</div>" +
       distanceRaceHtml(field, distanceRace, state.selectedDistanceKey);
