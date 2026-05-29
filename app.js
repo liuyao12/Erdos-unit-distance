@@ -2197,36 +2197,98 @@
     svg.replaceChildren();
     svg.setAttribute("viewBox", "0 0 " + rect.width + " " + rect.height);
 
+    const nodeBoxes = new Map();
+    for (const node of FIELD_POSET_NODES) {
+      const element = fieldPosetEl.querySelector("[data-poset-node=\"" + node.id + "\"]");
+      if (!element) continue;
+      const box = element.getBoundingClientRect();
+      nodeBoxes.set(node.id, {
+        left: box.left - rect.left,
+        top: box.top - rect.top,
+        right: box.right - rect.left,
+        bottom: box.bottom - rect.top,
+        width: box.width,
+        height: box.height,
+        cx: box.left + box.width / 2 - rect.left,
+        cy: box.top + box.height / 2 - rect.top
+      });
+    }
+
+    function boundaryPoint(box, target, gap) {
+      const vx = target.x - box.cx;
+      const vy = target.y - box.cy;
+      const ax = Math.abs(vx);
+      const ay = Math.abs(vy);
+      const halfWidth = box.width / 2 + gap;
+      const halfHeight = box.height / 2 + gap;
+      const scaleX = ax > 0.001 ? halfWidth / ax : Infinity;
+      const scaleY = ay > 0.001 ? halfHeight / ay : Infinity;
+      const scale = Math.min(scaleX, scaleY);
+      if (!Number.isFinite(scale)) {
+        return { x: box.cx, y: box.cy };
+      }
+      return {
+        x: box.cx + vx * scale,
+        y: box.cy + vy * scale
+      };
+    }
+
+    function segmentProjection(point, start, vector, lengthSquared) {
+      if (lengthSquared <= 0.001) return 0;
+      return clamp(0, ((point.x - start.x) * vector.x + (point.y - start.y) * vector.y) / lengthSquared, 1);
+    }
+
     for (let edgeIndex = 0; edgeIndex < FIELD_POSET_EDGES.length; edgeIndex += 1) {
       const [fromId, toId] = FIELD_POSET_EDGES[edgeIndex];
-      const from = fieldPosetEl.querySelector("[data-poset-node=\"" + fromId + "\"]");
-      const to = fieldPosetEl.querySelector("[data-poset-node=\"" + toId + "\"]");
-      if (!from || !to) continue;
+      const fromBox = nodeBoxes.get(fromId);
+      const toBox = nodeBoxes.get(toId);
+      if (!fromBox || !toBox) continue;
 
-      const fromRect = from.getBoundingClientRect();
-      const toRect = to.getBoundingClientRect();
-      const x1 = fromRect.left + fromRect.width / 2 - rect.left;
-      const y1 = fromRect.top + fromRect.height / 2 - rect.top;
-      const x2 = toRect.left + toRect.width / 2 - rect.left;
-      const y2 = toRect.top + toRect.height / 2 - rect.top;
-      const dx = x2 - x1;
-      const dy = y2 - y1;
+      const start = boundaryPoint(fromBox, { x: toBox.cx, y: toBox.cy }, 4);
+      const end = boundaryPoint(toBox, { x: fromBox.cx, y: fromBox.cy }, 4);
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
       const length = Math.max(1, Math.hypot(dx, dy));
+      const lengthSquared = length * length;
+      const unitX = dx / length;
+      const unitY = dy / length;
       const normalX = -dy / length;
       const normalY = dx / length;
-      const direction = dx === 0 ? (edgeIndex % 2 === 0 ? 1 : -1) : Math.sign(dx);
-      const bend = direction * clamp(5, Math.abs(dx) * 0.12 + Math.abs(dy) * 0.04, 24);
-      const c1x = x1 + dx * 0.33 + normalX * bend;
-      const c1y = y1 + dy * 0.33 + normalY * bend;
-      const c2x = x1 + dx * 0.67 + normalX * bend;
-      const c2y = y1 + dy * 0.67 + normalY * bend;
+      let direction = dx === 0 ? (edgeIndex % 2 === 0 ? 1 : -1) : Math.sign(dx);
+      let dodge = 0;
+
+      for (const [nodeId, box] of nodeBoxes) {
+        if (nodeId === fromId || nodeId === toId) continue;
+
+        const center = { x: box.cx, y: box.cy };
+        const projection = segmentProjection(center, start, { x: dx, y: dy }, lengthSquared);
+        if (projection <= 0.08 || projection >= 0.92) continue;
+
+        const closestX = start.x + dx * projection;
+        const closestY = start.y + dy * projection;
+        const offset = (center.x - closestX) * normalX + (center.y - closestY) * normalY;
+        const clearance = Math.hypot(box.width / 2, box.height / 2) + 7;
+        if (Math.abs(offset) >= clearance) continue;
+
+        if (Math.abs(offset) > 0.001 && Math.sign(offset) === direction) {
+          direction *= -1;
+        }
+        dodge = Math.max(dodge, clearance - Math.abs(offset) + 8);
+      }
+
+      const bend = direction * clamp(8, Math.abs(dx) * 0.1 + Math.abs(dy) * 0.035 + dodge * 0.5, 30);
+      const terminal = clamp(18, length * 0.22, 42);
+      const c1x = start.x + unitX * terminal + normalX * bend;
+      const c1y = start.y + unitY * terminal + normalY * bend;
+      const c2x = end.x - unitX * terminal + normalX * bend;
+      const c2y = end.y - unitY * terminal + normalY * bend;
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
       path.setAttribute(
         "d",
-        "M " + x1.toFixed(1) + " " + y1.toFixed(1) +
+        "M " + start.x.toFixed(1) + " " + start.y.toFixed(1) +
         " C " + c1x.toFixed(1) + " " + c1y.toFixed(1) +
         ", " + c2x.toFixed(1) + " " + c2y.toFixed(1) +
-        ", " + x2.toFixed(1) + " " + y2.toFixed(1)
+        ", " + end.x.toFixed(1) + " " + end.y.toFixed(1)
       );
       svg.appendChild(path);
     }
