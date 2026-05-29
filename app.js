@@ -1943,7 +1943,7 @@
       "<div class=\"status-top\">" +
       "<div class=\"status-meta\">" +
       "<span class=\"field-heading\">" + formatFieldLabelHtml(field) + "</span><br>" +
-      "visible points: <strong>" + formatNumber(lensPoints) + "</strong><br>" +
+      "visible points: n=<strong>" + formatNumber(lensPoints) + "</strong><br>" +
       "field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong>" +
       "</div>" +
       lowerBoundCardHtml(lensPoints) +
