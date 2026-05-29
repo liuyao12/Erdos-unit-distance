@@ -29,7 +29,6 @@
     8: [1, 0, 0, 0, 1],
     9: [1, 0, 0, 1, 0, 0, 1],
     12: [1, 0, -1, 0, 1],
-    18: [1, 0, 0, -1, 0, 0, 1],
     24: [1, 0, 0, 0, -1, 0, 0, 0, 1],
     30: [1, 1, 0, -1, -1, -1, 0, 1, 1]
   };
@@ -56,11 +55,13 @@
     {
       id: "eisenstein",
       type: "cyclotomic",
-      label: "Q(zeta_3)",
+      label: "Q(zeta_3) = Q(sqrt(-3))",
       shortLabel: "Z[zeta_3]",
       generator: "ζ",
       generatorHtml: "ζ_3",
-      relationText: "Z[ζ], ζ³ = 1",
+      aliasHtml: "<span class=\"field-label\"><strong>Q</strong>(&radic;-3)</span>",
+      definitionText: "Q(ζ_3) = Q(√-3), and O_K = Z[ζ_3]",
+      relationText: "O_K = Z[ζ_3]; Q(ζ_3) = Q(√-3)",
       m: 3,
       fullRing: true,
       defaultLensWorldRadius: 7.5,
@@ -220,21 +221,6 @@
       edgeStroke: "rgba(112, 118, 30, 0.32)"
     },
     {
-      id: "zeta18",
-      type: "cyclotomic",
-      label: "Q(zeta_18)",
-      shortLabel: "Z[zeta_18]",
-      m: 18,
-      defaultLensWorldRadius: 0.8,
-      defaultWindow: 2.2,
-      windowMin: 1,
-      windowMax: 6,
-      windowStep: 0.1,
-      pointFill: "#d9783d",
-      pointStroke: "rgba(133, 57, 22, 0.72)",
-      edgeStroke: "rgba(176, 72, 44, 0.34)"
-    },
-    {
       id: "zeta24",
       type: "cyclotomic",
       label: "Q(zeta_24)",
@@ -276,8 +262,7 @@
     { id: "zeta12", fieldId: "zeta12", x: 63 },
     { id: "sqrtMinus2SqrtMinus3", fieldId: "sqrtMinus2SqrtMinus3", x: 86 },
     { id: "zeta7", fieldId: "zeta7", x: 26 },
-    { id: "zeta9", fieldId: "zeta9", x: 47 },
-    { id: "zeta18", fieldId: "zeta18", x: 69 },
+    { id: "zeta9", fieldId: "zeta9", x: 54 },
     { id: "zeta30", fieldId: "zeta30", x: 42 },
     { id: "zeta24", fieldId: "zeta24", x: 69 }
   ];
@@ -294,7 +279,6 @@
     ["gaussian", "zeta12"],
     ["eisenstein", "zeta12"],
     ["eisenstein", "zeta9"],
-    ["eisenstein", "zeta18"],
     ["eisenstein", "sqrtMinus2SqrtMinus3"],
     ["eisenstein", "zeta30"],
     ["sqrtMinus2", "zeta8"],
@@ -1134,8 +1118,12 @@
   }
 
   function fieldHeadingHtml(field) {
+    const alias = field.aliasHtml
+      ? " <span class=\"field-alias-inline\">= " + field.aliasHtml + "</span>"
+      : "";
     return formatFieldLabelHtml(field) +
-      " <span class=\"field-degree-inline\">degree " + fieldDegree(field) + "</span>";
+      " <span class=\"field-degree-inline\">degree " + fieldDegree(field) + "</span>" +
+      alias;
   }
 
   function fieldRelationText(field) {
