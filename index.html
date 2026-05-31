@@ -128,9 +128,9 @@
 
     .status-top {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto auto;
+      grid-template-columns: minmax(0, 1fr) 88px 88px;
       gap: 6px;
-      align-items: center;
+      align-items: start;
     }
 
     .status-meta {
@@ -164,8 +164,10 @@
 
     .lower-bound-card,
     .shown-distance {
-      min-width: 88px;
-      max-width: 112px;
+      width: 88px;
+      min-width: 0;
+      max-width: none;
+      height: 38px;
       min-height: 38px;
       box-sizing: border-box;
       margin: 0;
@@ -356,7 +358,6 @@
 
     .race-count {
       justify-self: end;
-      margin-left: auto;
       min-width: 28px;
       color: var(--ink);
       font-size: 11px;
@@ -1019,6 +1020,6 @@
 
   <div class="status" id="status"></div>
   <script src="unit_distance_bounds.js?v=20260529-derived-rules"></script>
-  <script src="app.js?v=20260531-short-race-bars" defer></script>
+  <script src="app.js?v=20260531-tight-info" defer></script>
 </body>
 </html>
