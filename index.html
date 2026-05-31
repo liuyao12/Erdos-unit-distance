@@ -519,8 +519,8 @@
 
     .field-poset {
       position: relative;
-      flex: 1 1 auto;
-      min-height: 430px;
+      flex: 2 1 0;
+      min-height: 0;
       overflow: hidden;
     }
 
@@ -613,7 +613,10 @@
     }
 
     .lattice-panel {
-      flex: 0 0 auto;
+      flex: 1 1 0;
+      min-height: 180px;
+      display: flex;
+      flex-direction: column;
       padding-top: 8px;
       border-top: 1px solid rgba(20, 20, 20, 0.09);
     }
@@ -628,12 +631,43 @@
     }
 
     .lattice-options {
-      display: grid;
-      gap: 6px;
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 52px;
+      overflow: visible;
+    }
+
+    .lattice-lines {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    .lattice-lines path {
+      fill: none;
+      stroke: rgba(20, 20, 20, 0.22);
+      stroke-linecap: round;
+      stroke-width: 1.2;
+      transition: stroke 160ms ease, stroke-width 160ms ease, opacity 160ms ease;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .lattice-lines path.selected-lattice {
+      stroke: rgba(36, 54, 216, 0.7);
+      stroke-width: 2;
     }
 
     .lattice-option {
-      width: 100%;
+      position: absolute;
+      left: var(--x);
+      top: var(--y);
+      z-index: 1;
+      width: auto;
+      max-width: calc(100% - 14px);
       height: auto;
       min-height: 38px;
       display: grid;
@@ -643,6 +677,7 @@
       padding: 6px 7px;
       border-radius: 6px;
       text-align: left;
+      transform: translate(-50%, -50%);
     }
 
     .lattice-option.selected {
@@ -873,8 +908,8 @@
       </button>
     </div>
     <div id="fieldPoset" class="field-poset"></div>
-    <div class="lattice-panel" aria-label="lattice or order selector">
-      <div class="lattice-panel-title">Lattice / Order</div>
+  <div class="lattice-panel" aria-label="ring or lattice selector">
+    <div class="lattice-panel-title">Rings / Lattices</div>
       <div id="latticeOptions" class="lattice-options"></div>
     </div>
   </aside>
@@ -915,6 +950,6 @@
 
   <div class="status" id="status"></div>
   <script src="unit_distance_bounds.js?v=20260529-derived-rules"></script>
-  <script src="app.js?v=20260531-lattice-selector" defer></script>
+  <script src="app.js?v=20260531-lattice-poset" defer></script>
 </body>
 </html>
