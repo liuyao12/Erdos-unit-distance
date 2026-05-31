@@ -5,6 +5,7 @@
   const statusEl = document.getElementById("status");
   const tooltipEl = document.getElementById("pointTooltip");
   const fieldPanelEl = document.querySelector(".field-panel");
+  const fieldInfoEl = document.getElementById("fieldInfo");
   const fieldPosetEl = document.getElementById("fieldPoset");
   const latticeOptionsEl = document.getElementById("latticeOptions");
   const fieldPanelToggleButton = document.getElementById("fieldPanelToggle");
@@ -443,6 +444,7 @@
       generatorHtml: "&radic;-3,&radic;-11",
       latticeLabelHtml: "O<sub>K</sub> = Z[ζ_3,η]",
       latticeNoteHtml: "full ring, index 9 in Moser lattice",
+      statusSourceNoteHtml: "η=(1+&radic;-11)/2",
       latticeParentId: "moserLattice",
       latticeX: 50,
       latticeY: 76,
@@ -483,6 +485,7 @@
       generatorHtml: "&radic;-3,&radic;-11",
       latticeLabelHtml: "Moser lattice",
       latticeNoteHtml: "additive superlattice, not an order",
+      statusSourceHtml: "Moser lattice = Z&langle;1,ω_1,ω_3,ω_1ω_3&rangle;",
       latticeX: 50,
       latticeY: 24,
       basisLabels: ["1", "ω_1", "ω_3", "ω_1ω_3"],
@@ -608,6 +611,7 @@
   const MAX_DYNAMIC_CANDIDATES = 8000000;
   const DISTANCE_RACE_PAIR_LIMIT = 1600000;
   const DISTANCE_RACE_ROWS = 6;
+  const MOBILE_DISTANCE_RACE_ROWS = 4;
   const DISTANCE_KEY_SCALE = 1000000;
   const DISTANCE_COLORS = [
     "#f0a000",
@@ -1440,6 +1444,22 @@
     return "<span class=\"status-lattice\">source: " + latticeLabelHtml(field) + "</span>";
   }
 
+  function sourceStatusHtml(field) {
+    const label = field.statusSourceHtml || latticeLabelHtml(field);
+    const note = field.statusSourceNoteHtml || "";
+    return "<span class=\"status-source\"><span class=\"status-source-label\">source:</span> " +
+      label +
+      (note ? " <span class=\"status-source-note\">" + note + "</span>" : "") +
+      "</span>";
+  }
+
+  function fieldPanelInfoHtml(field) {
+    return (
+      "<div class=\"field-info-kicker\">field</div>" +
+      "<div class=\"field-info-main\">" + fieldHeadingHtml(field) + "</div>"
+    );
+  }
+
   function fieldRelationText(field) {
     return field.relationText || "Z[ζ], ζ" + superscriptNumber(field.m) + " = 1";
   }
@@ -1597,6 +1617,7 @@
   function buildDistanceRace(field, points, pointIndices, selectedKey) {
     const n = pointIndices.length;
     const pairCount = n * (n - 1) / 2;
+    const rowLimit = distanceRaceRowLimit();
     if (n < 2) {
       return { exact: true, pointCount: n, pairCount, rows: [], unitCount: 0, leader: null };
     }
@@ -1638,13 +1659,13 @@
 
     const unitEntry = counts.get(unitDistanceCoefficientKey(field)) || counts.get("num:" + distanceKey(UNIT_DISTANCE_SQUARED)) || null;
     const selectedEntry = selectedKey ? counts.get(selectedKey) || null : null;
-    const rows = entries.slice(0, DISTANCE_RACE_ROWS);
+    const rows = entries.slice(0, rowLimit);
     if (unitEntry && !rows.includes(unitEntry)) {
-      if (rows.length >= DISTANCE_RACE_ROWS) rows.pop();
+      if (rows.length >= rowLimit) rows.pop();
       rows.push(unitEntry);
     }
     if (selectedEntry && !rows.includes(selectedEntry)) {
-      if (rows.length >= DISTANCE_RACE_ROWS) {
+      if (rows.length >= rowLimit) {
         let replaceIndex = rows.length - 1;
         for (let i = rows.length - 1; i >= 0; i -= 1) {
           if (rows[i] !== unitEntry && rows[i] !== entries[0]) {
@@ -1693,6 +1714,10 @@
 
   function isUnitDistanceRow(row) {
     return row && Math.abs(row.distanceSquared - UNIT_DISTANCE_SQUARED) < 1 / DISTANCE_KEY_SCALE;
+  }
+
+  function distanceRaceRowLimit() {
+    return isMobileFieldDrawer() ? MOBILE_DISTANCE_RACE_ROWS : DISTANCE_RACE_ROWS;
   }
 
   function distanceRaceHtml(field, race, selectedKey) {
@@ -1883,51 +1908,101 @@
     setFieldPanelOpen(false);
   }
 
-  function lensScreenGeometry() {
-    const margin = 16;
-    let left = margin;
-    let top = margin;
-    let right = state.width - margin;
-    let bottom = state.height - margin;
+  function expandedObstacleRect(element, gap, bounds) {
+    const rect = element.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    const left = Math.max(bounds.left, rect.left - gap);
+    const top = Math.max(bounds.top, rect.top - gap);
+    const right = Math.min(bounds.right, rect.right + gap);
+    const bottom = Math.min(bounds.bottom, rect.bottom + gap);
+    if (right <= left || bottom <= top) return null;
+    return { left, top, right, bottom };
+  }
 
-    if (toolbarEl) {
-      const rect = toolbarEl.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        top = Math.max(top, Math.min(state.height - margin, rect.bottom + margin));
+  function pointToRectDistance(x, y, rect) {
+    const dx = x < rect.left ? rect.left - x : x > rect.right ? x - rect.right : 0;
+    const dy = y < rect.top ? rect.top - y : y > rect.bottom ? y - rect.bottom : 0;
+    return Math.hypot(dx, dy);
+  }
+
+  function lensClearance(x, y, bounds, obstacles) {
+    let clearance = Math.min(x - bounds.left, bounds.right - x, y - bounds.top, bounds.bottom - y);
+    if (clearance <= 0) return -1;
+    for (const obstacle of obstacles) {
+      const distance = pointToRectDistance(x, y, obstacle);
+      if (distance <= 0) return -1;
+      clearance = Math.min(clearance, distance);
+    }
+    return clearance;
+  }
+
+  function largestClearLens(bounds, obstacles) {
+    const width = bounds.right - bounds.left;
+    const height = bounds.bottom - bounds.top;
+    let best = {
+      x: (bounds.left + bounds.right) / 2,
+      y: (bounds.top + bounds.bottom) / 2,
+      radius: -1
+    };
+
+    const xSteps = 22;
+    const ySteps = 16;
+    for (let yi = 0; yi <= ySteps; yi += 1) {
+      const y = bounds.top + height * yi / ySteps;
+      for (let xi = 0; xi <= xSteps; xi += 1) {
+        const x = bounds.left + width * xi / xSteps;
+        const radius = lensClearance(x, y, bounds, obstacles);
+        if (radius > best.radius) best = { x, y, radius };
       }
     }
 
-    if (fieldPanelEl && !isMobileFieldDrawer()) {
-      const rect = fieldPanelEl.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        if (rect.left <= margin * 2) {
-          left = Math.max(left, Math.min(state.width - margin, rect.right + margin));
+    let step = Math.max(width, height) / 8;
+    for (let iteration = 0; iteration < 7; iteration += 1) {
+      for (let dy = -1; dy <= 1; dy += 1) {
+        for (let dx = -1; dx <= 1; dx += 1) {
+          const x = clamp(bounds.left, best.x + dx * step, bounds.right);
+          const y = clamp(bounds.top, best.y + dy * step, bounds.bottom);
+          const radius = lensClearance(x, y, bounds, obstacles);
+          if (radius > best.radius) best = { x, y, radius };
         }
       }
+      step *= 0.5;
     }
 
-    if (statusEl) {
-      const rect = statusEl.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        bottom = Math.min(bottom, Math.max(margin, rect.top - margin));
-      }
-    }
-
-    if (right - left < 96) {
-      left = margin;
-      right = state.width - margin;
-    }
-    if (bottom - top < 96) {
-      top = margin;
-      bottom = state.height - margin;
-    }
-
-    const radius = Math.max(24, Math.min((right - left) / 2, (bottom - top) / 2));
+    if (best.radius >= 24) return best;
     return {
-      x: (left + right) / 2,
-      y: (top + bottom) / 2,
-      radius
+      x: (bounds.left + bounds.right) / 2,
+      y: (bounds.top + bounds.bottom) / 2,
+      radius: Math.max(24, Math.min(width / 2, height / 2))
     };
+  }
+
+  function lensScreenGeometry() {
+    const margin = 16;
+    const bounds = {
+      left: margin,
+      top: margin,
+      right: state.width - margin,
+      bottom: state.height - margin
+    };
+    const obstacles = [];
+
+    if (fieldPanelEl && !isMobileFieldDrawer()) {
+      const rect = expandedObstacleRect(fieldPanelEl, margin, bounds);
+      if (rect) obstacles.push(rect);
+    }
+
+    if (toolbarEl) {
+      const rect = expandedObstacleRect(toolbarEl, margin, bounds);
+      if (rect) obstacles.push(rect);
+    }
+    if (statusEl) {
+      const rect = expandedObstacleRect(statusEl, margin, bounds);
+      if (rect) obstacles.push(rect);
+    }
+
+    const lens = largestClearLens(bounds, obstacles);
+    return { x: lens.x, y: lens.y, radius: Math.max(24, lens.radius) };
   }
 
   function resize() {
@@ -2361,10 +2436,11 @@
     statusEl.innerHTML =
       "<div class=\"status-top\">" +
       "<div class=\"status-meta\">" +
-      "<span class=\"field-heading\">" + fieldHeadingHtml(field) + "</span><br>" +
-      latticeStatusHtml(field) + "<br>" +
-      "visible points: n=<strong>" + formatNumber(lensPoints) + "</strong><br>" +
-      "field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong>" +
+      sourceStatusHtml(field) +
+      "<div class=\"status-measures\">" +
+      "<span>visible points: n=<strong>" + formatNumber(lensPoints) + "</strong></span>" +
+      "<span>field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong></span>" +
+      "</div>" +
       "</div>" +
       lowerBoundCardHtml(lensPoints) +
       shownDistanceHtml(field, distanceRace, activeDistance) +
@@ -2421,6 +2497,10 @@
       windowLabel.innerHTML = field.windowLabelHtml || "full O<sub>K</sub>";
     } else {
       windowLabel.textContent = "W=" + state.windowRadius.toFixed(1);
+    }
+    if (fieldInfoEl) {
+      fieldInfoEl.innerHTML = fieldPanelInfoHtml(field);
+      fieldInfoEl.title = fieldRelationText(field);
     }
     updateFieldPoset();
     renderLatticeOptions();
