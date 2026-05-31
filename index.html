@@ -520,7 +520,7 @@
     .field-poset {
       position: relative;
       flex: 1 1 auto;
-      min-height: 520px;
+      min-height: 430px;
       overflow: hidden;
     }
 
@@ -610,6 +610,76 @@
       background: #f4f3ee;
       cursor: default;
       opacity: 1;
+    }
+
+    .lattice-panel {
+      flex: 0 0 auto;
+      padding-top: 8px;
+      border-top: 1px solid rgba(20, 20, 20, 0.09);
+    }
+
+    .lattice-panel-title {
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    .lattice-options {
+      display: grid;
+      gap: 6px;
+    }
+
+    .lattice-option {
+      width: 100%;
+      height: auto;
+      min-height: 38px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      justify-items: start;
+      gap: 3px;
+      padding: 6px 7px;
+      border-radius: 6px;
+      text-align: left;
+    }
+
+    .lattice-option.selected {
+      color: #ffffff;
+      background: #22242a;
+      border-color: #22242a;
+    }
+
+    .lattice-name,
+    .lattice-note {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lattice-name {
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.05;
+    }
+
+    .lattice-note {
+      color: var(--muted);
+      font-size: 9.5px;
+      font-weight: 600;
+      line-height: 1.05;
+    }
+
+    .lattice-option.selected .lattice-note {
+      color: rgba(255, 255, 255, 0.72);
+    }
+
+    .status-lattice {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.25;
     }
 
     .slider-wrap {
@@ -729,6 +799,11 @@
         font-size: 9.5px;
       }
 
+      .lattice-option {
+        min-height: 34px;
+        padding: 5px 6px;
+      }
+
       .status {
         left: 12px;
         right: 12px;
@@ -798,6 +873,10 @@
       </button>
     </div>
     <div id="fieldPoset" class="field-poset"></div>
+    <div class="lattice-panel" aria-label="lattice or order selector">
+      <div class="lattice-panel-title">Lattice / Order</div>
+      <div id="latticeOptions" class="lattice-options"></div>
+    </div>
   </aside>
 
   <div class="toolbar" aria-label="controls">
@@ -836,6 +915,6 @@
 
   <div class="status" id="status"></div>
   <script src="unit_distance_bounds.js?v=20260529-derived-rules"></script>
-  <script src="app.js?v=20260529-distinct-field-poset" defer></script>
+  <script src="app.js?v=20260531-lattice-selector" defer></script>
 </body>
 </html>

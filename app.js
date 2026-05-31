@@ -6,6 +6,7 @@
   const tooltipEl = document.getElementById("pointTooltip");
   const fieldPanelEl = document.querySelector(".field-panel");
   const fieldPosetEl = document.getElementById("fieldPoset");
+  const latticeOptionsEl = document.getElementById("latticeOptions");
   const fieldPanelToggleButton = document.getElementById("fieldPanelToggle");
   const fieldPanelCloseButton = document.getElementById("fieldPanelClose");
   const fieldBackdropEl = document.getElementById("fieldBackdrop");
@@ -33,6 +34,22 @@
     30: [1, 1, 0, -1, -1, -1, 0, 1, 1]
   };
 
+  const SQRT3 = Math.sqrt(3);
+  const SQRT11 = Math.sqrt(11);
+  const ZETA3_VALUE = { re: -0.5, im: SQRT3 / 2 };
+  const OMEGA1_VALUE = { re: 0.5, im: SQRT3 / 2 };
+  const ETA11_PLUS = { re: 0.5, im: SQRT11 / 2 };
+  const ETA11_MINUS = { re: 0.5, im: -SQRT11 / 2 };
+  const OMEGA3_PLUS = { re: 5 / 6, im: SQRT11 / 6 };
+  const OMEGA3_MINUS = { re: 5 / 6, im: -SQRT11 / 6 };
+
+  function complexProduct(left, right) {
+    return {
+      re: left.re * right.re - left.im * right.im,
+      im: left.re * right.im + left.im * right.re
+    };
+  }
+
   const FIELDS = [
     {
       id: "gaussian",
@@ -40,6 +57,8 @@
       label: "Q(i)",
       shortLabel: "Z[i]",
       generator: "i",
+      latticeLabelHtml: "O<sub>K</sub> = Z[i]",
+      latticeNoteHtml: "full ring of integers",
       relationText: "Z[i], i² = -1",
       m: 4,
       fullRing: true,
@@ -60,6 +79,8 @@
       generator: "ζ",
       generatorHtml: "ζ_3",
       aliasHtml: "<span class=\"field-label\"><strong>Q</strong>(&radic;-3)</span>",
+      latticeLabelHtml: "O<sub>K</sub> = Z[ζ_3]",
+      latticeNoteHtml: "full ring of integers",
       definitionText: "Q(ζ_3) = Q(√-3), and O_K = Z[ζ_3]",
       relationText: "O_K = Z[ζ_3]; Q(ζ_3) = Q(√-3)",
       m: 3,
@@ -74,11 +95,49 @@
       edgeStroke: "rgba(161, 71, 48, 0.3)"
     },
     {
+      id: "sqrtMinus3Order",
+      fieldGroup: "eisenstein",
+      type: "basis",
+      label: "Q(zeta_3) = Q(sqrt(-3))",
+      shortLabel: "Z[sqrt(-3)]",
+      generatorHtml: "ζ_3",
+      aliasHtml: "<span class=\"field-label\"><strong>Q</strong>(&radic;-3)</span>",
+      latticeLabelHtml: "Z[&radic;-3]",
+      latticeNoteHtml: "index 2 suborder of O<sub>K</sub>",
+      windowLabelHtml: "full Z[β]",
+      windowTitle: "Full displayed order Z[β]",
+      basisLabels: ["1", "β"],
+      definitionText: "β = √-3; Z[β] is an index 2 suborder of O_K = Z[ζ_3]",
+      relationText: "Z[β] ⊂ O_K = Z[ζ_3], β² = -3",
+      degree: 2,
+      embeddings: [
+        [
+          { re: 1, im: 0 },
+          { re: 0, im: SQRT3 }
+        ]
+      ],
+      conjugateSigns: [1, -1],
+      productTable: {
+        "1,1": [-3, 0]
+      },
+      fullRing: true,
+      defaultLensWorldRadius: 8,
+      defaultWindow: 0,
+      windowMin: 0,
+      windowMax: 1,
+      windowStep: 1,
+      pointFill: "#547b8f",
+      pointStroke: "rgba(54, 87, 104, 0.72)",
+      edgeStroke: "rgba(70, 104, 122, 0.3)"
+    },
+    {
       id: "sqrtMinus2",
       type: "basis",
       label: "Q(sqrt(-2))",
       shortLabel: "Z[sqrt(-2)]",
       generatorHtml: "√-2",
+      latticeLabelHtml: "O<sub>K</sub> = Z[&radic;-2]",
+      latticeNoteHtml: "full ring of integers",
       basisLabels: ["1", "α"],
       definitionText: "α = √-2",
       relationText: "Z[α], α² = -2",
@@ -184,6 +243,8 @@
       label: "Q(sqrt(-2), sqrt(-3))",
       shortLabel: "Z[sqrt(-2), sqrt(-3)]",
       generatorHtml: "√-2,√-3",
+      latticeLabelHtml: "Z[&radic;-2,&radic;-3]",
+      latticeNoteHtml: "displayed order",
       basisLabels: ["1", "α", "β", "αβ"],
       definitionText: "α = √-2, β = √-3",
       relationText: "Z[α, β], α² = -2, β² = -3",
@@ -219,6 +280,80 @@
       pointFill: "#72751e",
       pointStroke: "rgba(83, 85, 24, 0.72)",
       edgeStroke: "rgba(112, 118, 30, 0.32)"
+    },
+    {
+      id: "moserOK",
+      fieldGroup: "moser",
+      type: "basis",
+      label: "Q(sqrt(-3), sqrt(-11))",
+      shortLabel: "O_K",
+      generatorHtml: "&radic;-3,&radic;-11",
+      latticeLabelHtml: "O<sub>K</sub> = Z[ζ_3,η]",
+      latticeNoteHtml: "η=(1+&radic;-11)/2",
+      basisLabels: ["1", "ζ", "η", "ζη"],
+      definitionText: "η = (1+√-11)/2; O_K = Z[ζ_3,η]",
+      relationText: "O_K = Z[ζ_3,(1+√-11)/2]",
+      degree: 4,
+      numericDistanceOnly: true,
+      embeddings: [
+        [
+          { re: 1, im: 0 },
+          ZETA3_VALUE,
+          ETA11_PLUS,
+          complexProduct(ZETA3_VALUE, ETA11_PLUS)
+        ],
+        [
+          { re: 1, im: 0 },
+          ZETA3_VALUE,
+          ETA11_MINUS,
+          complexProduct(ZETA3_VALUE, ETA11_MINUS)
+        ]
+      ],
+      defaultLensWorldRadius: 2,
+      defaultWindow: 2.2,
+      windowMin: 0.8,
+      windowMax: 6,
+      windowStep: 0.1,
+      pointFill: "#6f6a9d",
+      pointStroke: "rgba(68, 64, 112, 0.72)",
+      edgeStroke: "rgba(91, 84, 148, 0.3)"
+    },
+    {
+      id: "moserLattice",
+      fieldGroup: "moser",
+      type: "basis",
+      label: "Q(sqrt(-3), sqrt(-11))",
+      shortLabel: "Moser lattice",
+      generatorHtml: "&radic;-3,&radic;-11",
+      latticeLabelHtml: "Moser lattice",
+      latticeNoteHtml: "Z⟨1,ω_1,ω_3,ω_1ω_3⟩",
+      basisLabels: ["1", "ω_1", "ω_3", "ω_1ω_3"],
+      definitionText: "ω_1=(1+√-3)/2, ω_3=(5+√-11)/6; this is a lattice, not O_K",
+      relationText: "Moser lattice Z⟨1,ω_1,ω_3,ω_1ω_3⟩ inside Q(√-3,√-11)",
+      degree: 4,
+      numericDistanceOnly: true,
+      embeddings: [
+        [
+          { re: 1, im: 0 },
+          OMEGA1_VALUE,
+          OMEGA3_PLUS,
+          complexProduct(OMEGA1_VALUE, OMEGA3_PLUS)
+        ],
+        [
+          { re: 1, im: 0 },
+          OMEGA1_VALUE,
+          OMEGA3_MINUS,
+          complexProduct(OMEGA1_VALUE, OMEGA3_MINUS)
+        ]
+      ],
+      defaultLensWorldRadius: 2,
+      defaultWindow: 1.3,
+      windowMin: 0.8,
+      windowMax: 6,
+      windowStep: 0.1,
+      pointFill: "#c07a36",
+      pointStroke: "rgba(125, 70, 24, 0.72)",
+      edgeStroke: "rgba(176, 92, 31, 0.32)"
     },
     {
       id: "zeta24",
@@ -257,10 +392,11 @@
     { id: "gaussian", fieldId: "gaussian", x: 26 },
     { id: "eisenstein", fieldId: "eisenstein", x: 50 },
     { id: "sqrtMinus2", fieldId: "sqrtMinus2", x: 80 },
-    { id: "zeta5", fieldId: "zeta5", x: 26 },
-    { id: "zeta8", fieldId: "zeta8", x: 44 },
-    { id: "zeta12", fieldId: "zeta12", x: 63 },
-    { id: "sqrtMinus2SqrtMinus3", fieldId: "sqrtMinus2SqrtMinus3", x: 86 },
+    { id: "zeta5", fieldId: "zeta5", x: 22 },
+    { id: "zeta8", fieldId: "zeta8", x: 39 },
+    { id: "zeta12", fieldId: "zeta12", x: 54 },
+    { id: "moser", fieldId: "moserOK", labelHtml: "<span class=\"field-label\">Moser</span>", x: 72 },
+    { id: "sqrtMinus2SqrtMinus3", fieldId: "sqrtMinus2SqrtMinus3", x: 92 },
     { id: "zeta7", fieldId: "zeta7", x: 26 },
     { id: "zeta9", fieldId: "zeta9", x: 54 },
     { id: "zeta30", fieldId: "zeta30", x: 42 },
@@ -279,6 +415,7 @@
     ["gaussian", "zeta12"],
     ["eisenstein", "zeta12"],
     ["eisenstein", "zeta9"],
+    ["eisenstein", "moser"],
     ["eisenstein", "sqrtMinus2SqrtMinus3"],
     ["eisenstein", "zeta30"],
     ["sqrtMinus2", "zeta8"],
@@ -290,6 +427,15 @@
   ];
 
   const fieldById = new Map(FIELDS.map((field) => [field.id, field]));
+  function fieldGroupId(field) {
+    return field.fieldGroup || field.id;
+  }
+
+  function fieldVariants(field) {
+    const groupId = fieldGroupId(field);
+    return FIELDS.filter((candidate) => fieldGroupId(candidate) === groupId);
+  }
+
   const FIELD_POSET_MIN_DEGREE = Math.min(...FIELD_POSET_NODES.map(fieldPosetNodeDegree));
   const FIELD_POSET_MAX_DEGREE = Math.max(...FIELD_POSET_NODES.map(fieldPosetNodeDegree));
   const FIELD_POSET_DEGREES = [...new Set(FIELD_POSET_NODES.map(fieldPosetNodeDegree))]
@@ -968,12 +1114,18 @@
   }
 
   function unitDistanceCoefficientKey(field) {
+    if (field.numericDistanceOnly) {
+      return "num:" + distanceKey(UNIT_DISTANCE_SQUARED);
+    }
     const coeffs = new Array(fieldDegree(field)).fill(0);
     coeffs[0] = 1;
     return "alg:" + coefficientKey(coeffs);
   }
 
   function pairDistanceRaceKey(field, p, q, approximateDistanceSquared, cache) {
+    if (field.numericDistanceOnly) {
+      return "num:" + distanceKey(approximateDistanceSquared);
+    }
     if (!p.coeffs || !q.coeffs || p.coeffs.length !== q.coeffs.length) {
       return "num:" + distanceKey(approximateDistanceSquared);
     }
@@ -1124,6 +1276,10 @@
     return formatFieldLabelHtml(field) +
       " <span class=\"field-degree-inline\">degree " + fieldDegree(field) + "</span>" +
       alias;
+  }
+
+  function latticeStatusHtml(field) {
+    return "<span class=\"status-lattice\">lattice: " + latticeLabelHtml(field) + "</span>";
   }
 
   function fieldRelationText(field) {
@@ -2048,6 +2204,7 @@
       "<div class=\"status-top\">" +
       "<div class=\"status-meta\">" +
       "<span class=\"field-heading\">" + fieldHeadingHtml(field) + "</span><br>" +
+      latticeStatusHtml(field) + "<br>" +
       "visible points: n=<strong>" + formatNumber(lensPoints) + "</strong><br>" +
       "field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong>" +
       "</div>" +
@@ -2098,16 +2255,17 @@
     windowInput.disabled = Boolean(field.fullRing);
     if (windowControl) {
       windowControl.classList.toggle("full-ring", Boolean(field.fullRing));
-      windowControl.title = field.fullRing
+      windowControl.title = field.windowTitle || (field.fullRing
         ? "Full ring of integers"
-        : "Window radius W: larger values admit more points";
+        : "Window radius W: larger values admit more points");
     }
     if (field.fullRing) {
-      windowLabel.innerHTML = "full O<sub>K</sub>";
+      windowLabel.innerHTML = field.windowLabelHtml || "full O<sub>K</sub>";
     } else {
       windowLabel.textContent = "W=" + state.windowRadius.toFixed(1);
     }
     updateFieldPoset();
+    renderLatticeOptions();
     state.dataset = null;
     fitInitial();
   }
@@ -2119,6 +2277,47 @@
     state.dataset = null;
     state.dirty = true;
     requestDraw();
+  }
+
+  function latticeLabelHtml(field) {
+    if (field.latticeLabelHtml) return field.latticeLabelHtml;
+    if (field.type === "cyclotomic") {
+      const generator = field.generatorHtml || field.generator || "ζ_" + field.m;
+      return "O<sub>K</sub> = Z[" + generator + "]";
+    }
+    return field.fullRing ? "O<sub>K</sub>" : escapeHtml(field.shortLabel || field.label);
+  }
+
+  function latticeNoteHtml(field) {
+    if (field.latticeNoteHtml) return field.latticeNoteHtml;
+    if (field.type === "cyclotomic") {
+      return field.fullRing ? "full ring of integers" : "full ring, windowed projection";
+    }
+    return field.fullRing ? "full ring of integers" : "cut-and-project lattice";
+  }
+
+  function renderLatticeOptions() {
+    if (!latticeOptionsEl) return;
+
+    const field = currentField();
+    const variants = fieldVariants(field);
+    latticeOptionsEl.replaceChildren();
+
+    for (const variant of variants) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "lattice-option";
+      button.classList.toggle("selected", variant.id === field.id);
+      button.innerHTML =
+        "<span class=\"lattice-name\">" + latticeLabelHtml(variant) + "</span>" +
+        "<span class=\"lattice-note\">" + latticeNoteHtml(variant) + "</span>";
+      button.title = variant.relationText || variant.label;
+      button.setAttribute("aria-pressed", variant.id === field.id ? "true" : "false");
+      button.addEventListener("click", () => {
+        if (variant.id !== state.fieldId) setField(variant.id);
+      });
+      latticeOptionsEl.appendChild(button);
+    }
   }
 
   function initControls() {
@@ -2249,7 +2448,11 @@
 
   function selectedFieldPosetNodeId() {
     const field = currentField();
-    const node = FIELD_POSET_NODES.find((candidate) => candidate.fieldId === field.id);
+    const groupId = fieldGroupId(field);
+    const node = FIELD_POSET_NODES.find((candidate) => {
+      const candidateField = candidate.fieldId ? fieldById.get(candidate.fieldId) : null;
+      return candidateField && fieldGroupId(candidateField) === groupId;
+    });
     return node ? node.id : null;
   }
 
@@ -2277,8 +2480,10 @@
   function updateFieldPoset() {
     if (!fieldPosetEl) return;
     const field = currentField();
+    const groupId = fieldGroupId(field);
     for (const button of fieldPosetEl.querySelectorAll(".field-node[data-field-id]")) {
-      const selected = button.dataset.fieldId === field.id;
+      const buttonField = fieldById.get(button.dataset.fieldId);
+      const selected = buttonField && fieldGroupId(buttonField) === groupId;
       button.classList.toggle("selected", selected);
       button.setAttribute("aria-pressed", selected ? "true" : "false");
     }
