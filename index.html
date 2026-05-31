@@ -699,6 +699,10 @@
       overflow: visible;
     }
 
+    .lattice-options.moser-diagram {
+      min-height: 176px;
+    }
+
     .lattice-lines {
       position: absolute;
       inset: 0;
@@ -748,6 +752,25 @@
       border-color: #22242a;
     }
 
+    .lattice-ambient {
+      position: absolute;
+      left: var(--x);
+      top: var(--y);
+      z-index: 1;
+      width: auto;
+      max-width: calc(100% - 14px);
+      min-height: 30px;
+      display: grid;
+      gap: 2px;
+      padding: 5px 8px;
+      transform: translate(-50%, -50%);
+      color: var(--ink);
+      background: #f4f3ee;
+      border: 1px solid rgba(20, 20, 20, 0.12);
+      border-radius: 6px;
+      text-align: center;
+    }
+
     .lattice-name,
     .lattice-note {
       max-width: 100%;
@@ -771,6 +794,11 @@
 
     .lattice-option.selected .lattice-note {
       color: rgba(255, 255, 255, 0.72);
+    }
+
+    .lattice-ambient .lattice-name,
+    .lattice-ambient .lattice-note {
+      text-align: center;
     }
 
     .status-lattice {
@@ -1025,6 +1053,6 @@
 
   <div class="status" id="status"></div>
   <script src="unit_distance_bounds.js?v=20260529-derived-rules"></script>
-  <script src="app.js?v=20260531-fit-info" defer></script>
+  <script src="app.js?v=20260531-moser-diagram" defer></script>
 </body>
 </html>
