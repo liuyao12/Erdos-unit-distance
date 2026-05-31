@@ -255,8 +255,7 @@
 
     .race-row {
       position: relative;
-      display: grid;
-      grid-template-columns: minmax(92px, max-content) minmax(160px, 1fr) minmax(34px, max-content);
+      display: flex;
       gap: 5px;
       align-items: center;
       min-height: 16px;
@@ -300,7 +299,9 @@
       display: flex;
       align-items: baseline;
       gap: 4px;
-      min-width: 0;
+      flex: 0 1 116px;
+      min-width: 92px;
+      max-width: 126px;
       overflow: hidden;
       color: var(--ink);
       font-size: 11px;
@@ -322,7 +323,9 @@
     }
 
     .race-track {
+      flex: 0 0 150px;
       height: 6px;
+      min-width: 0;
       overflow: hidden;
       background: rgba(20, 20, 20, 0.11);
       border-radius: 7px;
@@ -353,6 +356,7 @@
 
     .race-count {
       justify-self: end;
+      margin-left: auto;
       min-width: 28px;
       color: var(--ink);
       font-size: 11px;
@@ -916,17 +920,19 @@
       }
 
       .race-row {
-        grid-template-columns: minmax(82px, max-content) minmax(96px, 1fr) max-content;
         gap: 5px;
         padding-inline: 4px;
       }
 
       .race-label {
+        flex-basis: 88px;
+        min-width: 76px;
+        max-width: 104px;
         gap: 4px;
       }
 
       .race-track {
-        min-width: 0;
+        flex-basis: 86px;
       }
 
       .race-count {
@@ -936,12 +942,21 @@
 
     @media (max-width: 360px) {
       .race-row {
-        grid-template-columns: minmax(72px, max-content) minmax(72px, 1fr) max-content;
         gap: 4px;
         padding-inline: 3px;
       }
 
-      .race-label,
+      .race-label {
+        flex-basis: 76px;
+        min-width: 64px;
+        max-width: 88px;
+        font-size: 10px;
+      }
+
+      .race-track {
+        flex-basis: 70px;
+      }
+
       .race-count {
         font-size: 10px;
       }
@@ -1004,6 +1019,6 @@
 
   <div class="status" id="status"></div>
   <script src="unit_distance_bounds.js?v=20260529-derived-rules"></script>
-  <script src="app.js?v=20260531-race-bars" defer></script>
+  <script src="app.js?v=20260531-short-race-bars" defer></script>
 </body>
 </html>
