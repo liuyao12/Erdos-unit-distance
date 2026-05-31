@@ -436,6 +436,55 @@
       edgeStroke: "rgba(112, 118, 30, 0.32)"
     },
     {
+      id: "moserRing",
+      fieldGroup: "moser",
+      type: "basis",
+      label: "Q(sqrt(-3), sqrt(-11))",
+      shortLabel: "Moser ring",
+      generatorHtml: "&radic;-3,&radic;-11",
+      latticeLabelHtml: "Z[ω_1,ω_3]",
+      latticeNoteHtml: "not contained in O_K",
+      statusSourceHtml: "Moser ring = Z[ω_1,ω_3]",
+      statusSourceNoteHtml: "not in O_K",
+      latticeParentId: "moserAmbient",
+      latticeX: 50,
+      latticeY: 36,
+      basisLabels: ["1", "ω_1", "ω_3", "ω_1ω_3"],
+      definitionText: "ω_1=(1+√-3)/2, ω_3=(5+√-11)/6; ω_3 is not integral",
+      relationText: "O_K ⊂ Z[ω_1,ω_3] ⊂ K, but Z[ω_1,ω_3] is not contained in O_K",
+      degree: 4,
+      numericDistanceOnly: true,
+      sampleKind: "moserRing",
+      sampleBaseWindow: 1.3,
+      embeddings: [
+        [
+          { re: 1, im: 0 },
+          OMEGA1_VALUE,
+          OMEGA3_PLUS,
+          complexProduct(OMEGA1_VALUE, OMEGA3_PLUS)
+        ],
+        [
+          { re: 1, im: 0 },
+          OMEGA1_VALUE,
+          OMEGA3_MINUS,
+          complexProduct(OMEGA1_VALUE, OMEGA3_MINUS)
+        ]
+      ],
+      defaultLensWorldRadius: 2,
+      defaultWindow: 3,
+      windowMin: 0,
+      windowMax: 6,
+      windowStep: 1,
+      windowLabelPrefix: "D",
+      windowValueFormat: "integer",
+      windowTitle: "Sample depth D: include powers of ω_3 up to D",
+      statusWindowLabel: "sample depth",
+      statusWindowValue: "window",
+      pointFill: "#c07a36",
+      pointStroke: "rgba(125, 70, 24, 0.72)",
+      edgeStroke: "rgba(176, 92, 31, 0.32)"
+    },
+    {
       id: "moserOK",
       fieldGroup: "moser",
       type: "basis",
@@ -443,11 +492,11 @@
       shortLabel: "O_K",
       generatorHtml: "&radic;-3,&radic;-11",
       latticeLabelHtml: "O<sub>K</sub> = Z[ζ_3,η]",
-      latticeNoteHtml: "full ring, index 9 in Moser lattice",
+      latticeNoteHtml: "ring of integers; integral",
       statusSourceNoteHtml: "η=(1+&radic;-11)/2",
       latticeParentId: "moserLattice",
       latticeX: 50,
-      latticeY: 76,
+      latticeY: 90,
       basisLabels: ["1", "ζ", "η", "ζη"],
       definitionText: "η = (1+√-11)/2; O_K = Z[ζ_3,η]",
       relationText: "O_K = Z[ζ_3,(1+√-11)/2]",
@@ -483,11 +532,12 @@
       label: "Q(sqrt(-3), sqrt(-11))",
       shortLabel: "Moser lattice",
       generatorHtml: "&radic;-3,&radic;-11",
-      latticeLabelHtml: "Moser lattice",
-      latticeNoteHtml: "additive superlattice, not an order",
+      latticeLabelHtml: "Z&langle;1,ω_1,ω_3,ω_1ω_3&rangle;",
+      latticeNoteHtml: "rank-4 additive span; not ring",
       statusSourceHtml: "Moser lattice = Z&langle;1,ω_1,ω_3,ω_1ω_3&rangle;",
+      latticeParentId: "moserRing",
       latticeX: 50,
-      latticeY: 24,
+      latticeY: 64,
       basisLabels: ["1", "ω_1", "ω_3", "ω_1ω_3"],
       definitionText: "ω_1=(1+√-3)/2, ω_3=(5+√-11)/6; this is a lattice, not O_K",
       relationText: "Moser lattice Z⟨1,ω_1,ω_3,ω_1ω_3⟩ inside Q(√-3,√-11)",
@@ -556,7 +606,7 @@
     { id: "zeta5", fieldId: "zeta5", x: 22 },
     { id: "zeta8", fieldId: "zeta8", x: 39 },
     { id: "zeta12", fieldId: "zeta12", x: 54 },
-    { id: "moser", fieldId: "moserOK", labelHtml: "<span class=\"field-label\">Moser</span>", x: 72 },
+    { id: "moser", fieldId: "moserRing", labelHtml: "<span class=\"field-label\">Moser</span>", x: 72 },
     { id: "sqrtMinus2SqrtMinus3", fieldId: "sqrtMinus2SqrtMinus3OK", x: 92 },
     { id: "zeta7", fieldId: "zeta7", x: 26 },
     { id: "zeta9", fieldId: "zeta9", x: 54 },
@@ -809,6 +859,69 @@
     };
   }
 
+  function rotatePointByUnit(x, y, unit) {
+    return {
+      x: x * unit.re - y * unit.im,
+      y: x * unit.im + y * unit.re
+    };
+  }
+
+  function complexUnitPowers(unit, depth) {
+    const powers = [{ re: 1, im: 0 }];
+    for (let i = 1; i <= depth; i += 1) {
+      powers.push(complexProduct(powers[i - 1], unit));
+    }
+    return powers;
+  }
+
+  function roundedPointKey(x, y) {
+    return Math.round(x * 1e9) + "," + Math.round(y * 1e9);
+  }
+
+  function pointInsideBounds(x, y, bounds) {
+    return (
+      x >= bounds.xMin - 1e-9 &&
+      x <= bounds.xMax + 1e-9 &&
+      y >= bounds.yMin - 1e-9 &&
+      y <= bounds.yMax + 1e-9
+    );
+  }
+
+  function sampleDepth(field, windowRadius) {
+    return clamp(field.windowMin || 0, Math.round(windowRadius), field.windowMax || 0);
+  }
+
+  function moserRingPhysicalPowers(field, depth) {
+    const embeddings = fieldEmbeddingValues(field);
+    return complexUnitPowers(embeddings[0][2], depth);
+  }
+
+  function inverseRotatedBoundsForPowers(bounds, powers) {
+    const corners = [
+      [bounds.xMin, bounds.yMin],
+      [bounds.xMin, bounds.yMax],
+      [bounds.xMax, bounds.yMin],
+      [bounds.xMax, bounds.yMax]
+    ];
+    let xMin = Infinity;
+    let yMin = Infinity;
+    let xMax = -Infinity;
+    let yMax = -Infinity;
+
+    for (const power of powers) {
+      const inverse = { re: power.re, im: -power.im };
+      for (const [x, y] of corners) {
+        const p = rotatePointByUnit(x, y, inverse);
+        xMin = Math.min(xMin, p.x);
+        yMin = Math.min(yMin, p.y);
+        xMax = Math.max(xMax, p.x);
+        yMax = Math.max(yMax, p.y);
+      }
+    }
+
+    return { xMin, yMin, xMax, yMax };
+  }
+
   function boundsContains(outer, inner) {
     const eps = 1e-9;
     return (
@@ -865,12 +978,27 @@
       ? [1.6, 1.3, 1.1, 1]
       : [DATA_BUFFER_LINEAR_FACTOR, 2.5, 2, 1.6, 1.3, 1.1, 1];
     const extraWorld = degree >= 8 ? 0.1 : DATA_BUFFER_EXTRA_WORLD;
+    const isMoserRingSample = field.sampleKind === "moserRing";
+    const depth = isMoserRingSample ? sampleDepth(field, windowRadius) : null;
+    const powers = isMoserRingSample ? moserRingPhysicalPowers(field, depth) : null;
+    const basisWindowRadius = isMoserRingSample ? field.sampleBaseWindow : windowRadius;
     let fallback = null;
 
     for (const factor of factors) {
-      const bounds = expandBounds(viewBounds, factor, extraWorld);
-      const { ranges, candidateCount } = coefficientRangesForRegion(field, windowRadius, bounds);
-      const plan = { bounds, ranges, candidateCount };
+      const queryBounds = expandBounds(viewBounds, factor, extraWorld);
+      const bounds = isMoserRingSample
+        ? inverseRotatedBoundsForPowers(queryBounds, powers)
+        : queryBounds;
+      const { ranges, candidateCount } = coefficientRangesForRegion(field, basisWindowRadius, bounds);
+      const plan = {
+        bounds,
+        queryBounds,
+        ranges,
+        candidateCount,
+        sampleDepth: depth,
+        samplePowers: powers,
+        baseWindowRadius: basisWindowRadius
+      };
       if (!fallback || candidateCount < fallback.candidateCount) {
         fallback = plan;
       }
@@ -927,7 +1055,7 @@
     return edges;
   }
 
-  function buildDataset(field, windowRadius, plan) {
+  function buildBasisDataset(field, windowRadius, plan) {
     const started = performance.now();
     const degree = fieldDegree(field);
     const total = plan.candidateCount;
@@ -1035,7 +1163,7 @@
       windowRadius,
       points,
       edges,
-      queryBounds: plan.bounds,
+      queryBounds: plan.queryBounds || plan.bounds,
       candidateCount: total,
       testedCandidateCount,
       bounds: { minX, minY, maxX, maxY },
@@ -1043,6 +1171,78 @@
       exactPhysicalCrop: false
     };
     return dataset;
+  }
+
+  function samplePowerExpression(field, coeffs, powerIndex) {
+    const base = formatFieldInteger(field, coeffs);
+    if (powerIndex === 0 || base === "0") return base;
+    const power = powerIndex === 1 ? "ω_3" : "ω_3^" + powerIndex;
+    return base === "1" ? power : power + " · (" + base + ")";
+  }
+
+  function buildMoserRingDataset(field, windowRadius, plan) {
+    const started = performance.now();
+    const depth = Number.isFinite(plan.sampleDepth)
+      ? plan.sampleDepth
+      : sampleDepth(field, windowRadius);
+    const powers = plan.samplePowers || moserRingPhysicalPowers(field, depth);
+    const baseWindowRadius = Number.isFinite(plan.baseWindowRadius)
+      ? plan.baseWindowRadius
+      : field.sampleBaseWindow;
+    const baseDataset = buildBasisDataset(field, baseWindowRadius, plan);
+    const points = [];
+    const seen = new Set();
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    for (let powerIndex = 0; powerIndex < powers.length; powerIndex += 1) {
+      const power = powers[powerIndex];
+      for (const basePoint of baseDataset.points) {
+        const p = rotatePointByUnit(basePoint.x, basePoint.y, power);
+        if (!pointInsideBounds(p.x, p.y, plan.queryBounds)) continue;
+
+        const key = roundedPointKey(p.x, p.y);
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        const coeffs = powerIndex === 0 ? basePoint.coeffs.slice() : null;
+        points.push({
+          x: p.x,
+          y: p.y,
+          coeffs,
+          expression: samplePowerExpression(field, basePoint.coeffs, powerIndex),
+          rootPower: null
+        });
+        minX = Math.min(minX, p.x);
+        minY = Math.min(minY, p.y);
+        maxX = Math.max(maxX, p.x);
+        maxY = Math.max(maxY, p.y);
+      }
+    }
+
+    const edges = buildUnitDistanceEdges(points);
+    return {
+      field,
+      windowRadius,
+      points,
+      edges,
+      queryBounds: plan.queryBounds,
+      candidateCount: baseDataset.candidateCount * powers.length,
+      testedCandidateCount: baseDataset.testedCandidateCount * powers.length,
+      bounds: { minX, minY, maxX, maxY },
+      buildMs: performance.now() - started,
+      exactPhysicalCrop: false,
+      candidateLabel: "sampled ring elements"
+    };
+  }
+
+  function buildDataset(field, windowRadius, plan) {
+    if (field.sampleKind === "moserRing") {
+      return buildMoserRingDataset(field, windowRadius, plan);
+    }
+    return buildBasisDataset(field, windowRadius, plan);
   }
 
   function ensureDataset(field, windowRadius, viewBounds) {
@@ -1452,6 +1652,22 @@
       "</span>";
   }
 
+  function windowControlValueText(field, value) {
+    const prefix = field.windowLabelPrefix || "W";
+    const formatted = field.windowValueFormat === "integer"
+      ? String(Math.round(value))
+      : value.toFixed(1);
+    return prefix + "=" + formatted;
+  }
+
+  function statusWindowMeasureHtml(field, value) {
+    const label = field.statusWindowLabel || "field radius";
+    const formatted = field.windowValueFormat === "integer"
+      ? String(Math.round(value))
+      : value.toFixed(2);
+    return escapeHtml(label) + ": <strong>" + escapeHtml(formatted) + "</strong>";
+  }
+
   function fieldPanelInfoHtml(field) {
     return (
       "<div class=\"field-info-kicker\">field</div>" +
@@ -1588,7 +1804,7 @@
     if (!tooltipEl) return;
 
     const point = nearestPointAt(event.clientX, event.clientY);
-    if (!point || !point.coeffs) {
+    if (!point || (!point.coeffs && !point.expression)) {
       hidePointTooltip();
       return;
     }
@@ -1600,7 +1816,7 @@
       const noteEl = document.createElement("div");
       expressionEl.className = "tooltip-expression";
       noteEl.className = "tooltip-note";
-      expressionEl.textContent = formatFieldInteger(field, point.coeffs);
+      expressionEl.textContent = point.expression || formatFieldInteger(field, point.coeffs);
       noteEl.textContent = zetaDefinitionText(field);
       tooltipEl.replaceChildren(expressionEl, noteEl);
       state.hoverPoint = point;
@@ -2438,7 +2654,10 @@
       sourceStatusHtml(field) +
       "<div class=\"status-measures\">" +
       "<span>visible points: n=<strong>" + formatNumber(lensPoints) + "</strong></span>" +
-      "<span>field radius: <strong>" + lensWorldRadius.toFixed(2) + "</strong></span>" +
+      "<span>" + statusWindowMeasureHtml(
+        field,
+        field.statusWindowValue === "window" ? state.windowRadius : lensWorldRadius
+      ) + "</span>" +
       "</div>" +
       "</div>" +
       lowerBoundCardHtml(lensPoints) +
@@ -2446,10 +2665,11 @@
       "</div>" +
       distanceRaceHtml(field, distanceRace, state.selectedDistanceKey);
     animateRaceRows(previousRaceRects);
+    const candidateLabel = dataset.candidateLabel || "coefficient candidates";
     const candidateText = dataset.testedCandidateCount < dataset.candidateCount
       ? "tested " + formatNumber(dataset.testedCandidateCount) + " of " +
-        formatNumber(dataset.candidateCount) + " candidate coefficient vectors"
-      : formatNumber(dataset.candidateCount) + " coefficient candidates";
+        formatNumber(dataset.candidateCount) + " " + candidateLabel
+      : formatNumber(dataset.candidateCount) + " " + candidateLabel;
     statusEl.title =
       "computed viewport patch: " + formatNumber(points.length) + " points, " +
       formatNumber(edges.length) + " unit distances; " + candidateText;
@@ -2495,7 +2715,7 @@
     if (field.fullRing) {
       windowLabel.innerHTML = field.windowLabelHtml || "full O<sub>K</sub>";
     } else {
-      windowLabel.textContent = "W=" + state.windowRadius.toFixed(1);
+      windowLabel.textContent = windowControlValueText(field, state.windowRadius);
     }
     if (fieldInfoEl) {
       fieldInfoEl.innerHTML = fieldPanelInfoHtml(field);
@@ -2509,8 +2729,9 @@
 
   function updateWindowRadius() {
     hidePointTooltip();
+    const field = currentField();
     state.windowRadius = Number(windowInput.value);
-    windowLabel.textContent = "W=" + state.windowRadius.toFixed(1);
+    windowLabel.textContent = windowControlValueText(field, state.windowRadius);
     state.dataset = null;
     state.dirty = true;
     requestDraw();
@@ -2547,8 +2768,9 @@
   function latticeEdgePath(parentPosition, childPosition) {
     const top = parentPosition.y <= childPosition.y ? parentPosition : childPosition;
     const bottom = parentPosition.y <= childPosition.y ? childPosition : parentPosition;
-    const verticalInset = 14;
-    const bend = Math.max(16, Math.min(32, Math.abs(bottom.y - top.y) * 0.55));
+    const gap = Math.abs(bottom.y - top.y);
+    const verticalInset = clamp(5, gap * 0.28, 14);
+    const bend = clamp(7, gap * 0.45, 32);
     return "M " + top.x.toFixed(2) + " " + (top.y + verticalInset).toFixed(2) +
       " C " + top.x.toFixed(2) + " " + (top.y + bend).toFixed(2) +
       ", " + bottom.x.toFixed(2) + " " + (bottom.y - bend).toFixed(2) +
@@ -2560,10 +2782,17 @@
 
     const field = currentField();
     const variants = fieldVariants(field);
+    const isMoserDiagram = fieldGroupId(field) === "moser";
     latticeOptionsEl.replaceChildren();
-    latticeOptionsEl.style.minHeight = variants.length > 1 ? "116px" : "52px";
+    latticeOptionsEl.classList.toggle("moser-diagram", isMoserDiagram);
+    latticeOptionsEl.style.minHeight = isMoserDiagram
+      ? "176px"
+      : variants.length > 1 ? "116px" : "52px";
 
     const positions = new Map();
+    if (isMoserDiagram) {
+      positions.set("moserAmbient", { x: 50, y: 9 });
+    }
     variants.forEach((variant, index) => {
       positions.set(variant.id, latticeNodePosition(variant, index, variants.length));
     });
@@ -2574,6 +2803,19 @@
     lines.setAttribute("preserveAspectRatio", "none");
     lines.setAttribute("aria-hidden", "true");
     latticeOptionsEl.appendChild(lines);
+
+    if (isMoserDiagram) {
+      const ambientPosition = positions.get("moserAmbient");
+      const ambientNode = document.createElement("div");
+      ambientNode.className = "lattice-ambient";
+      ambientNode.style.setProperty("--x", ambientPosition.x + "%");
+      ambientNode.style.setProperty("--y", ambientPosition.y + "%");
+      ambientNode.innerHTML =
+        "<span class=\"lattice-name\">K = <strong>Q</strong>(&radic;-3,&radic;-11)</span>" +
+        "<span class=\"lattice-note\">ambient field</span>";
+      ambientNode.title = "K contains both O_K and the non-integral Moser ring";
+      latticeOptionsEl.appendChild(ambientNode);
+    }
 
     for (const variant of variants) {
       if (!variant.latticeParentId || !positions.has(variant.latticeParentId)) continue;
