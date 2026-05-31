@@ -1447,8 +1447,7 @@
   function sourceStatusHtml(field) {
     const label = field.statusSourceHtml || latticeLabelHtml(field);
     const note = field.statusSourceNoteHtml || "";
-    return "<span class=\"status-source\"><span class=\"status-source-label\">source:</span> " +
-      label +
+    return "<span class=\"status-source\">" + label +
       (note ? " <span class=\"status-source-note\">" + note + "</span>" : "") +
       "</span>";
   }
