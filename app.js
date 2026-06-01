@@ -2008,7 +2008,8 @@
     if (!race) return "";
     let html =
       "<div class=\"distance-race\">" +
-      "<div class=\"race-heading\"><strong>distance race</strong><span>C(" +
+      "<div class=\"race-heading\" title=\"The race counts every pair of points in the disk; n above counts only vertices incident to the selected distance.\">" +
+      "<strong>visible distance race</strong><span>C(" +
       formatNumber(race.pointCount) + ", 2) = " + formatNumber(race.pairCount) + " pairs</span></div>";
 
     if (!race.exact) {
