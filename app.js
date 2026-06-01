@@ -1986,6 +1986,16 @@
     return edges;
   }
 
+  function graphPointCountFromEdges(edges) {
+    if (!edges.length) return 0;
+    const vertices = new Set();
+    for (const [i, j] of edges) {
+      vertices.add(i);
+      vertices.add(j);
+    }
+    return vertices.size;
+  }
+
   function isUnitDistanceRow(row) {
     return row && Math.abs(row.distanceSquared - UNIT_DISTANCE_SQUARED) < 1 / DISTANCE_KEY_SCALE;
   }
@@ -2580,7 +2590,15 @@
     const edges = distanceRace.exact && activeDistance
       ? buildDistanceEdges(snapshot.field, snapshot.points, snapshot.indices, activeDistance.key)
       : [];
-    return { distanceRace, activeDistance, edges };
+    const graphPointCount = distanceRace.exact && activeDistance
+      ? graphPointCountFromEdges(edges)
+      : null;
+    return {
+      distanceRace,
+      activeDistance,
+      edges,
+      graphPointCount
+    };
   }
 
   function pointToLensExport(point, snapshot, exportSize, padding) {
@@ -2593,7 +2611,7 @@
 
   function exportLensSvg() {
     const snapshot = lensPointSnapshot();
-    const { activeDistance, edges } = currentLensDistanceEdges(snapshot);
+    const { activeDistance, edges, graphPointCount } = currentLensDistanceEdges(snapshot);
     const highlightedGraph = moserChainGraph(snapshot.field, state.windowRadius);
     const highlightedVisible = highlightedGraph
       ? highlightedGraph.points.map((point) => pointInsideLensWorld(point, snapshot.center, snapshot.radius * snapshot.radius))
@@ -2620,6 +2638,7 @@
         escapeHtml(JSON.stringify({
           field: snapshot.field.label,
           points: snapshot.indices.length,
+          graphPoints: graphPointCount,
           edges: edges.length,
           highlightedGraph: highlightedGraph ? {
             name: highlightedGraph.name,
@@ -2744,6 +2763,9 @@
     const winningEdges = distanceRace.exact && activeDistance
       ? buildDistanceEdges(field, points, lensIndices, activeDistance.key)
       : [];
+    const graphPointCount = distanceRace.exact && activeDistance
+      ? graphPointCountFromEdges(winningEdges)
+      : null;
     let lensEdges = 0;
 
     if (distanceRace.exact) {
@@ -2817,9 +2839,7 @@
     drawLensShade(lens);
 
     const lensWorldRadius = lens.radius / state.scale;
-    const lensEdgeText = distanceRace.exact
-      ? formatNumber(distanceRace.unitCount)
-      : edges.length <= countEdgeLimit ? formatNumber(lensEdges) : "paused";
+    const graphPointCountText = graphPointCount === null ? "paused" : formatNumber(graphPointCount);
 
     const previousRaceRects = captureRaceRowRects();
     statusEl.innerHTML =
@@ -2827,7 +2847,7 @@
       "<div class=\"status-meta\">" +
       sourceStatusHtml(field) +
       "<div class=\"status-measures\">" +
-      "<span>visible points: n=<strong>" + formatNumber(lensPoints) + "</strong></span>" +
+      "<span>graph points: n=<strong>" + graphPointCountText + "</strong></span>" +
       "<span>" + statusWindowMeasureHtml(
         field,
         field.statusWindowValue === "window" ? state.windowRadius : lensWorldRadius
@@ -2835,7 +2855,7 @@
       graphMeasureHtml(highlightedGraph) +
       "</div>" +
       "</div>" +
-      lowerBoundCardHtml(lensPoints) +
+      (graphPointCount === null ? "" : lowerBoundCardHtml(graphPointCount)) +
       shownDistanceHtml(field, distanceRace, activeDistance) +
       "</div>" +
       distanceRaceHtml(field, distanceRace, state.selectedDistanceKey);
@@ -2845,8 +2865,14 @@
       ? "tested " + formatNumber(dataset.testedCandidateCount) + " of " +
         formatNumber(dataset.candidateCount) + " " + candidateLabel
       : formatNumber(dataset.candidateCount) + " " + candidateLabel;
+    const activeGraphTitle = graphPointCount === null
+      ? "active distance graph paused above pair limit"
+      : "active distance graph: " + formatNumber(graphPointCount) + " non-isolated points, " +
+        formatNumber(winningEdges.length) + " edges";
     statusEl.title =
-      "computed viewport patch: " + formatNumber(points.length) + " points, " +
+      activeGraphTitle + "; lens has " + formatNumber(lensPoints) +
+      " points; computed viewport patch: " +
+      formatNumber(points.length) + " points, " +
       formatNumber(edges.length) + " unit distances; " + candidateText;
 
     if (state.autoFitPending) {
