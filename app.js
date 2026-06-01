@@ -44,6 +44,60 @@
   const OMEGA3_PLUS = { re: 5 / 6, im: SQRT11 / 6 };
   const OMEGA3_MINUS = { re: 5 / 6, im: -SQRT11 / 6 };
 
+  const SQRT_MINUS2_ZETA3_EXACT_ALGEBRA = {
+    // Basis order: [1, sqrt(-2), zeta_3, sqrt(-2) zeta_3].
+    productTable: {
+      "1,1": [-2, 0, 0, 0],
+      "1,2": [0, 0, 0, 1],
+      "1,3": [0, 0, -2, 0],
+      "2,2": [-1, 0, -1, 0],
+      "2,3": [0, -1, 0, -1],
+      "3,3": [2, 0, 2, 0]
+    },
+    conjugateMatrix: [
+      [1, 0, 0, 0],
+      [0, -1, 0, 0],
+      [-1, 0, -1, 0],
+      [0, 1, 0, 1]
+    ]
+  };
+
+  const MOSER_BASIS_EXACT_ALGEBRA = {
+    // Basis order: [1, omega_1, omega_3, omega_1 omega_3].
+    productTable: {
+      "1,1": [-1, 1, 0, 0],
+      "1,2": [0, 0, 0, 1],
+      "1,3": [0, 0, -1, 1],
+      "2,2": [-1, 0, "5/3", 0],
+      "2,3": [0, -1, 0, "5/3"],
+      "3,3": [1, -1, "-5/3", "5/3"]
+    },
+    conjugateMatrix: [
+      [1, 0, 0, 0],
+      [1, -1, 0, 0],
+      ["5/3", 0, -1, 0],
+      ["5/3", "-5/3", -1, 1]
+    ]
+  };
+
+  const MOSER_OK_EXACT_ALGEBRA = {
+    // Basis order: [1, zeta_3, eta, zeta_3 eta], eta = (1 + sqrt(-11)) / 2.
+    productTable: {
+      "1,1": [-1, -1, 0, 0],
+      "1,2": [0, 0, 0, 1],
+      "1,3": [0, 0, -1, -1],
+      "2,2": [-3, 0, 1, 0],
+      "2,3": [0, -3, 0, 1],
+      "3,3": [3, 3, -1, -1]
+    },
+    conjugateMatrix: [
+      [1, 0, 0, 0],
+      [-1, -1, 0, 0],
+      [1, 0, -1, 0],
+      [-1, -1, 1, 1]
+    ]
+  };
+
   function complexProduct(left, right) {
     return {
       re: left.re * right.re - left.im * right.im,
@@ -362,7 +416,7 @@
       definitionText: "a = sqrt(-2), z = zeta_3; O_K = Z[a,z]",
       relationText: "O_K = Z[sqrt(-2), zeta_3]",
       degree: 4,
-      numericDistanceOnly: true,
+      exactAlgebra: SQRT_MINUS2_ZETA3_EXACT_ALGEBRA,
       embeddings: [
         [
           { re: 1, im: 0 },
@@ -453,7 +507,7 @@
       definitionText: "ω_1=(1+√-3)/2, ω_3=(5+√-11)/6; ω_3 is not integral",
       relationText: "Z[ω_1,ω_3] is a subring of K, but it is not contained in O_K",
       degree: 4,
-      numericDistanceOnly: true,
+      exactAlgebra: MOSER_BASIS_EXACT_ALGEBRA,
       sampleKind: "moserRing",
       sampleBaseWindow: 1.8,
       embeddings: [
@@ -477,7 +531,7 @@
       windowStep: 1,
       windowLabelPrefix: "D",
       windowValueFormat: "integer",
-      windowTitle: "Moser graph depth D: D=1 gives the spindle; larger D adds rotated copies",
+      windowTitle: "Moser sample depth D: larger D adds rotated copies; the spindle highlight is always shown in full",
       statusWindowLabel: "sample depth",
       statusWindowValue: "window",
       highlightGraph: "moserChain",
@@ -502,7 +556,7 @@
       definitionText: "η = (1+√-11)/2; O_K = Z[ζ_3,η]",
       relationText: "O_K = Z[ζ_3,(1+√-11)/2]",
       degree: 4,
-      numericDistanceOnly: true,
+      exactAlgebra: MOSER_OK_EXACT_ALGEBRA,
       embeddings: [
         [
           { re: 1, im: 0 },
@@ -543,7 +597,7 @@
       definitionText: "ω_1=(1+√-3)/2, ω_3=(5+√-11)/6; this is a lattice, not O_K",
       relationText: "Moser lattice Z⟨1,ω_1,ω_3,ω_1ω_3⟩ inside Q(√-3,√-11)",
       degree: 4,
-      numericDistanceOnly: true,
+      exactAlgebra: MOSER_BASIS_EXACT_ALGEBRA,
       embeddings: [
         [
           { re: 1, im: 0 },
@@ -654,6 +708,7 @@
     .sort((a, b) => b - a);
   const embeddingGeometryCache = new Map();
   const rootPowerCoefficientCache = new Map();
+  const exactAlgebraCache = new Map();
   const UNIT_DISTANCE_SQUARED = 1;
   const UNIT_DISTANCE_TOLERANCE = 1e-8;
   const DATA_BUFFER_AREA_FACTOR = 10;
@@ -676,6 +731,7 @@
     "#25a244",
     "#c026d3"
   ];
+  const MOSER_SPINDLE_DEPTH = 1;
   const MOSER_GRAPH_BASE_COEFFS = [
     [0, 0, 0, 0],
     [1, 0, 0, 0],
@@ -723,6 +779,219 @@
       y = next;
     }
     return x;
+  }
+
+  function bigintAbs(value) {
+    return value < 0n ? -value : value;
+  }
+
+  function bigintGcd(a, b) {
+    let x = bigintAbs(a);
+    let y = bigintAbs(b);
+    while (y) {
+      const next = x % y;
+      x = y;
+      y = next;
+    }
+    return x || 1n;
+  }
+
+  function rational(numerator, denominator) {
+    let n = BigInt(numerator);
+    let d = denominator === undefined ? 1n : BigInt(denominator);
+    if (d === 0n) throw new Error("Zero rational denominator");
+    if (n === 0n) return { n: 0n, d: 1n };
+    if (d < 0n) {
+      n = -n;
+      d = -d;
+    }
+    const divisor = bigintGcd(n, d);
+    return { n: n / divisor, d: d / divisor };
+  }
+
+  function rationalFromLiteral(value) {
+    if (value && typeof value === "object" && "n" in value && "d" in value) {
+      return rational(value.n, value.d);
+    }
+    if (typeof value === "bigint") return rational(value, 1n);
+    if (typeof value === "number") {
+      if (!Number.isInteger(value)) {
+        throw new Error("Exact algebra literals must be integers or fraction strings");
+      }
+      return rational(BigInt(value), 1n);
+    }
+    const text = String(value).trim();
+    if (text.includes("/")) {
+      const [n, d] = text.split("/");
+      return rational(BigInt(n), BigInt(d));
+    }
+    return rational(BigInt(text), 1n);
+  }
+
+  function rationalIsZero(value) {
+    return value.n === 0n;
+  }
+
+  function rationalAdd(left, right) {
+    return rational(left.n * right.d + right.n * left.d, left.d * right.d);
+  }
+
+  function rationalNeg(value) {
+    return value.n === 0n ? value : { n: -value.n, d: value.d };
+  }
+
+  function rationalSub(left, right) {
+    return rationalAdd(left, rationalNeg(right));
+  }
+
+  function rationalMul(left, right) {
+    if (rationalIsZero(left) || rationalIsZero(right)) return rational(0n, 1n);
+    return rational(left.n * right.n, left.d * right.d);
+  }
+
+  function rationalKey(value) {
+    return value.d === 1n ? String(value.n) : String(value.n) + "/" + String(value.d);
+  }
+
+  function rationalVectorFromLiterals(values, degree) {
+    const coeffs = new Array(degree);
+    for (let i = 0; i < degree; i += 1) {
+      coeffs[i] = rationalFromLiteral(i < values.length ? values[i] : 0);
+    }
+    return coeffs;
+  }
+
+  function rationalVectorFromIntegerCoefficients(coeffs) {
+    return coeffs.map((coefficient) => rationalFromLiteral(coefficient));
+  }
+
+  function rationalZeroVector(degree) {
+    return rationalVectorFromLiterals([], degree);
+  }
+
+  function rationalUnitVector(degree, index) {
+    const coeffs = rationalZeroVector(degree);
+    coeffs[index] = rational(1n, 1n);
+    return coeffs;
+  }
+
+  function rationalVectorKey(coeffs) {
+    return coeffs.map(rationalKey).join(",");
+  }
+
+  function canonicalRationalVectorKey(coeffs) {
+    let sign = 1;
+    for (const coefficient of coeffs) {
+      if (coefficient.n < 0n) {
+        sign = -1;
+        break;
+      }
+      if (coefficient.n > 0n) break;
+    }
+    const normalized = sign < 0 ? coeffs.map(rationalNeg) : coeffs;
+    return rationalVectorKey(normalized);
+  }
+
+  function exactAlgebraForField(field) {
+    if (!field.exactAlgebra) return null;
+    if (exactAlgebraCache.has(field.id)) return exactAlgebraCache.get(field.id);
+
+    const degree = fieldDegree(field);
+    const productTable = new Map();
+    for (const [key, value] of Object.entries(field.exactAlgebra.productTable || {})) {
+      productTable.set(key, rationalVectorFromLiterals(value, degree));
+    }
+    const conjugateMatrix = field.exactAlgebra.conjugateMatrix.map((row) => {
+      return rationalVectorFromLiterals(row, degree);
+    });
+    const algebra = { degree, productTable, conjugateMatrix };
+    exactAlgebraCache.set(field.id, algebra);
+    return algebra;
+  }
+
+  function hasExactDistanceAlgebra(field) {
+    return Boolean(field && field.exactAlgebra);
+  }
+
+  function exactBasisProductCoefficients(field, leftIndex, rightIndex) {
+    const algebra = exactAlgebraForField(field);
+    if (leftIndex === 0) return rationalUnitVector(algebra.degree, rightIndex);
+    if (rightIndex === 0) return rationalUnitVector(algebra.degree, leftIndex);
+
+    const direct = leftIndex + "," + rightIndex;
+    const reverse = rightIndex + "," + leftIndex;
+    const product = algebra.productTable.get(direct) || algebra.productTable.get(reverse);
+    if (!product) {
+      throw new Error("Missing exact product table entry for " + field.id + ": " + direct);
+    }
+    return product;
+  }
+
+  function addScaledExactVector(out, scale, vector) {
+    if (rationalIsZero(scale)) return;
+    for (let i = 0; i < out.length; i += 1) {
+      if (rationalIsZero(vector[i])) continue;
+      out[i] = rationalAdd(out[i], rationalMul(scale, vector[i]));
+    }
+  }
+
+  function multiplyExactCoefficients(field, leftCoeffs, rightCoeffs) {
+    const algebra = exactAlgebraForField(field);
+    const coeffs = rationalZeroVector(algebra.degree);
+    for (let i = 0; i < algebra.degree; i += 1) {
+      const left = leftCoeffs[i];
+      if (rationalIsZero(left)) continue;
+      for (let j = 0; j < algebra.degree; j += 1) {
+        const right = rightCoeffs[j];
+        if (rationalIsZero(right)) continue;
+        const product = exactBasisProductCoefficients(field, i, j);
+        addScaledExactVector(coeffs, rationalMul(left, right), product);
+      }
+    }
+    return coeffs;
+  }
+
+  function conjugateExactCoefficients(field, coeffs) {
+    const algebra = exactAlgebraForField(field);
+    const conjugate = rationalZeroVector(algebra.degree);
+    for (let i = 0; i < algebra.degree; i += 1) {
+      addScaledExactVector(conjugate, coeffs[i], algebra.conjugateMatrix[i]);
+    }
+    return conjugate;
+  }
+
+  function exactPointCoefficients(point) {
+    if (!point) return null;
+    if (point.exactCoeffs) return point.exactCoeffs;
+    if (!point.coeffs) return null;
+    if (!point.exactCoeffCache) {
+      point.exactCoeffCache = rationalVectorFromIntegerCoefficients(point.coeffs);
+    }
+    return point.exactCoeffCache;
+  }
+
+  function exactDifferenceCoefficients(left, right) {
+    const diff = new Array(left.length);
+    for (let i = 0; i < left.length; i += 1) {
+      diff[i] = rationalSub(left[i], right[i]);
+    }
+    return diff;
+  }
+
+  function exactSquaredDistanceKey(field, diffCoeffs) {
+    const conjugateCoeffs = conjugateExactCoefficients(field, diffCoeffs);
+    return "algq:" + rationalVectorKey(multiplyExactCoefficients(field, diffCoeffs, conjugateCoeffs));
+  }
+
+  function exactPowerCoefficients(field, generatorIndex, depth) {
+    const algebra = exactAlgebraForField(field);
+    if (!algebra) return null;
+    const powers = [rationalUnitVector(algebra.degree, 0)];
+    const generator = rationalUnitVector(algebra.degree, generatorIndex);
+    for (let i = 1; i <= depth; i += 1) {
+      powers.push(multiplyExactCoefficients(field, powers[i - 1], generator));
+    }
+    return powers;
   }
 
   function embeddingRepresentatives(m) {
@@ -903,6 +1172,10 @@
     return complexUnitPowers(embeddings[0][2], depth);
   }
 
+  function moserRingExactPowerCoefficients(field, depth) {
+    return hasExactDistanceAlgebra(field) ? exactPowerCoefficients(field, 2, depth) : null;
+  }
+
   function inverseRotatedBoundsForPowers(bounds, powers) {
     const corners = [
       [bounds.xMin, bounds.yMin],
@@ -988,6 +1261,7 @@
     const isMoserRingSample = field.sampleKind === "moserRing";
     const depth = isMoserRingSample ? sampleDepth(field, windowRadius) : null;
     const powers = isMoserRingSample ? moserRingPhysicalPowers(field, depth) : null;
+    const exactPowers = isMoserRingSample ? moserRingExactPowerCoefficients(field, depth) : null;
     const basisWindowRadius = isMoserRingSample ? field.sampleBaseWindow : windowRadius;
     let fallback = null;
 
@@ -1004,6 +1278,7 @@
         candidateCount,
         sampleDepth: depth,
         samplePowers: powers,
+        sampleExactPowers: exactPowers,
         baseWindowRadius: basisWindowRadius
       };
       if (!fallback || candidateCount < fallback.candidateCount) {
@@ -1017,18 +1292,24 @@
     return fallback;
   }
 
-  function isUnitDistance(p, q) {
+  function isUnitDistance(p, q, field, exactUnitKey, keyCache) {
     const dx = p.x - q.x;
     const dy = p.y - q.y;
     const distanceSquared = dx * dx + dy * dy;
+    if (field && hasExactDistanceAlgebra(field)) {
+      const key = pairDistanceRaceKey(field, p, q, distanceSquared, keyCache || new Map());
+      return key === exactUnitKey || key === "num:" + distanceKey(UNIT_DISTANCE_SQUARED);
+    }
     return Math.abs(distanceSquared - UNIT_DISTANCE_SQUARED) <= UNIT_DISTANCE_TOLERANCE;
   }
 
-  function buildUnitDistanceEdges(points) {
+  function buildUnitDistanceEdges(points, field) {
     const cellSize = 1;
     const neighborRange = 2;
     const grid = new Map();
     const edges = [];
+    const exactUnitKey = field && hasExactDistanceAlgebra(field) ? unitDistanceCoefficientKey(field) : null;
+    const keyCache = new Map();
 
     const cellKey = (x, y) => x + "," + y;
 
@@ -1043,7 +1324,7 @@
           if (!bucket) continue;
 
           for (const j of bucket) {
-            if (isUnitDistance(p, points[j])) {
+            if (isUnitDistance(p, points[j], field, exactUnitKey, keyCache)) {
               edges.push([j, i]);
             }
           }
@@ -1163,7 +1444,7 @@
 
     if (canComplete(0)) visit(0);
 
-    const edges = buildUnitDistanceEdges(points);
+    const edges = buildUnitDistanceEdges(points, field);
 
     const dataset = {
       field,
@@ -1203,6 +1484,7 @@
 
     const depth = sampleDepth(field, depthValue);
     const powers = moserRingPhysicalPowers(field, depth);
+    const exactPowers = moserRingExactPowerCoefficients(field, depth);
     const points = [];
     const seen = new Map();
 
@@ -1211,7 +1493,10 @@
       for (const coeffs of MOSER_GRAPH_BASE_COEFFS) {
         const basePoint = physicalPointFromCoefficients(field, coeffs);
         const point = rotatePointByUnit(basePoint.x, basePoint.y, power);
-        const key = roundedPointKey(point.x, point.y);
+        const exactCoeffs = exactPowers
+          ? multiplyExactCoefficients(field, exactPowers[powerIndex], rationalVectorFromIntegerCoefficients(coeffs))
+          : null;
+        const key = exactCoeffs ? rationalVectorKey(exactCoeffs) : roundedPointKey(point.x, point.y);
         if (seen.has(key)) continue;
 
         seen.set(key, points.length);
@@ -1219,6 +1504,7 @@
           x: point.x,
           y: point.y,
           coeffs: powerIndex === 0 ? coeffs.slice() : null,
+          exactCoeffs,
           expression: samplePowerExpression(field, coeffs, powerIndex)
         });
       }
@@ -1228,7 +1514,7 @@
       depth,
       name: depth === 1 ? "Moser spindle" : "Moser chain",
       points,
-      edges: buildUnitDistanceEdges(points)
+      edges: buildUnitDistanceEdges(points, field)
     };
   }
 
@@ -1238,6 +1524,7 @@
       ? plan.sampleDepth
       : sampleDepth(field, windowRadius);
     const powers = plan.samplePowers || moserRingPhysicalPowers(field, depth);
+    const exactPowers = plan.sampleExactPowers || moserRingExactPowerCoefficients(field, depth);
     const baseWindowRadius = Number.isFinite(plan.baseWindowRadius)
       ? plan.baseWindowRadius
       : field.sampleBaseWindow;
@@ -1255,7 +1542,10 @@
         const p = rotatePointByUnit(basePoint.x, basePoint.y, power);
         if (!pointInsideBounds(p.x, p.y, plan.queryBounds)) continue;
 
-        const key = roundedPointKey(p.x, p.y);
+        const exactCoeffs = exactPowers
+          ? multiplyExactCoefficients(field, exactPowers[powerIndex], exactPointCoefficients(basePoint))
+          : null;
+        const key = exactCoeffs ? rationalVectorKey(exactCoeffs) : roundedPointKey(p.x, p.y);
         if (seen.has(key)) continue;
         seen.add(key);
 
@@ -1264,6 +1554,7 @@
           x: p.x,
           y: p.y,
           coeffs,
+          exactCoeffs,
           expression: samplePowerExpression(field, basePoint.coeffs, powerIndex),
           rootPower: null
         });
@@ -1274,7 +1565,7 @@
       }
     }
 
-    const edges = buildUnitDistanceEdges(points);
+    const edges = buildUnitDistanceEdges(points, field);
     return {
       field,
       windowRadius,
@@ -1368,6 +1659,62 @@
     return key.startsWith("alg:")
       ? key.slice(4).split(",").map((value) => Number(value))
       : null;
+  }
+
+  function rationalCoefficientsFromKey(key) {
+    if (key.startsWith("algq:")) {
+      return key.slice(5).split(",").map(rationalFromLiteral);
+    }
+    if (key.startsWith("alg:")) {
+      return key.slice(4).split(",").map(rationalFromLiteral);
+    }
+    return null;
+  }
+
+  function plainRationalCoefficient(coeffs) {
+    if (!coeffs || !coeffs.length) return null;
+    for (let i = 1; i < coeffs.length; i += 1) {
+      if (!rationalIsZero(coeffs[i])) return null;
+    }
+    return coeffs[0];
+  }
+
+  function integerSquareRoot(value) {
+    if (value < 0n) return null;
+    if (value < 2n) return value;
+    let low = 1n;
+    let high = value;
+    while (low <= high) {
+      const mid = (low + high) / 2n;
+      const square = mid * mid;
+      if (square === value) return mid;
+      if (square < value) {
+        low = mid + 1n;
+      } else {
+        high = mid - 1n;
+      }
+    }
+    return high;
+  }
+
+  function perfectSquareRoot(value) {
+    const root = integerSquareRoot(value);
+    return root !== null && root * root === value ? root : null;
+  }
+
+  function rationalSquareRootText(value) {
+    if (!value || value.n < 0n) return null;
+    const numeratorRoot = perfectSquareRoot(value.n);
+    const denominatorRoot = perfectSquareRoot(value.d);
+    if (numeratorRoot !== null && denominatorRoot !== null) {
+      return denominatorRoot === 1n
+        ? String(numeratorRoot)
+        : String(numeratorRoot) + "/" + String(denominatorRoot);
+    }
+    const body = value.d === 1n
+      ? String(value.n)
+      : String(value.n) + "/" + String(value.d);
+    return "sqrt(" + body + ")";
   }
 
   function escapeHtml(value) {
@@ -1528,6 +1875,9 @@
   }
 
   function unitDistanceCoefficientKey(field) {
+    if (hasExactDistanceAlgebra(field)) {
+      return "algq:" + rationalVectorKey(rationalUnitVector(fieldDegree(field), 0));
+    }
     if (field.numericDistanceOnly) {
       return "num:" + distanceKey(UNIT_DISTANCE_SQUARED);
     }
@@ -1537,6 +1887,21 @@
   }
 
   function pairDistanceRaceKey(field, p, q, approximateDistanceSquared, cache) {
+    if (hasExactDistanceAlgebra(field)) {
+      const pExactCoeffs = exactPointCoefficients(p);
+      const qExactCoeffs = exactPointCoefficients(q);
+      if (pExactCoeffs && qExactCoeffs && pExactCoeffs.length === qExactCoeffs.length) {
+        const diffCoeffs = exactDifferenceCoefficients(pExactCoeffs, qExactCoeffs);
+        const diffKey = "exact:" + canonicalRationalVectorKey(diffCoeffs);
+        let squaredKey = cache.get(diffKey);
+        if (!squaredKey) {
+          squaredKey = exactSquaredDistanceKey(field, diffCoeffs);
+          cache.set(diffKey, squaredKey);
+        }
+        return squaredKey;
+      }
+    }
+
     if (field.numericDistanceOnly) {
       return "num:" + distanceKey(approximateDistanceSquared);
     }
@@ -1640,17 +2005,10 @@
   }
 
   function exactDistanceText(field, row) {
-    const coeffs = coefficientsFromKey(row.key);
+    const coeffs = rationalCoefficientsFromKey(row.key);
     if (!coeffs) return null;
 
-    const integerValue = plainIntegerCoefficient(coeffs);
-    if (integerValue !== null && integerValue >= 0) {
-      const root = Math.sqrt(integerValue);
-      if (Math.abs(root - Math.round(root)) < 1e-9) return String(Math.round(root));
-      return "√" + String(integerValue);
-    }
-
-    return null;
+    return rationalSquareRootText(plainRationalCoefficient(coeffs));
   }
 
   function distanceLabelHtml(field, row) {
@@ -2435,36 +2793,21 @@
     return drawn;
   }
 
-  function pointInsideLensWorld(point, center, radiusSquared) {
-    const dx = point.x - center.x;
-    const dy = point.y - center.y;
-    return dx * dx + dy * dy <= radiusSquared + 1e-12;
-  }
-
-  function drawMoserGraphOverlay(graph, lens) {
+  function drawMoserGraphOverlay(graph) {
     if (!graph || !graph.points.length) return 0;
 
-    const center = screenToWorld(lens.x, lens.y);
-    const lensWorldRadius = lens.radius / state.scale;
-    const radiusSquared = lensWorldRadius * lensWorldRadius;
-    const visible = graph.points.map((point) => pointInsideLensWorld(point, center, radiusSquared));
     const edgeWidth = clamp(2.1, state.scale * 0.018, 4.6);
     const pointRadius = clamp(4.2, state.scale * 0.033, 8);
     let drawnEdges = 0;
     let drawnPoints = 0;
 
     ctx.save();
-    ctx.beginPath();
-    ctx.arc(lens.x, lens.y, lens.radius, 0, Math.PI * 2);
-    ctx.clip();
-
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
     ctx.lineWidth = edgeWidth + 3.8;
     ctx.beginPath();
     for (const [i, j] of graph.edges) {
-      if (!visible[i] || !visible[j]) continue;
       const p = worldToScreen(graph.points[i].x, graph.points[i].y);
       const q = worldToScreen(graph.points[j].x, graph.points[j].y);
       ctx.moveTo(p.x, p.y);
@@ -2477,7 +2820,6 @@
     ctx.lineWidth = edgeWidth;
     ctx.beginPath();
     for (const [i, j] of graph.edges) {
-      if (!visible[i] || !visible[j]) continue;
       const p = worldToScreen(graph.points[i].x, graph.points[i].y);
       const q = worldToScreen(graph.points[j].x, graph.points[j].y);
       ctx.moveTo(p.x, p.y);
@@ -2490,7 +2832,6 @@
     ctx.lineWidth = Math.max(1.3, Math.min(2.3, pointRadius * 0.32));
     ctx.beginPath();
     for (let i = 0; i < graph.points.length; i += 1) {
-      if (!visible[i]) continue;
       const p = worldToScreen(graph.points[i].x, graph.points[i].y);
       ctx.moveTo(p.x + pointRadius, p.y);
       ctx.arc(p.x, p.y, pointRadius, 0, Math.PI * 2);
@@ -2613,10 +2954,7 @@
   function exportLensSvg() {
     const snapshot = lensPointSnapshot();
     const { activeDistance, edges, graphPointCount } = currentLensDistanceEdges(snapshot);
-    const highlightedGraph = moserChainGraph(snapshot.field, state.windowRadius);
-    const highlightedVisible = highlightedGraph
-      ? highlightedGraph.points.map((point) => pointInsideLensWorld(point, snapshot.center, snapshot.radius * snapshot.radius))
-      : [];
+    const highlightedGraph = moserChainGraph(snapshot.field, MOSER_SPINDLE_DEPTH);
     const exportSize = 1200;
     const padding = 36;
     const radius = (exportSize - padding * 2) / 2;
@@ -2674,12 +3012,13 @@
     }
     parts.push("</g>");
 
+    parts.push("</g>");
+
     if (highlightedGraph) {
       const graphEdgeWidth = Math.max(2.6, lineWidth * 1.6);
       parts.push("<g fill=\"none\" stroke=\"#ffffff\" stroke-opacity=\"0.9\" stroke-width=\"" +
         (graphEdgeWidth + 4).toFixed(3) + "\" stroke-linecap=\"round\" stroke-linejoin=\"round\">");
       for (const [i, j] of highlightedGraph.edges) {
-        if (!highlightedVisible[i] || !highlightedVisible[j]) continue;
         const p = pointToLensExport(highlightedGraph.points[i], snapshot, exportSize, padding);
         const q = pointToLensExport(highlightedGraph.points[j], snapshot, exportSize, padding);
         parts.push("<path d=\"M " + p.x.toFixed(3) + " " + p.y.toFixed(3) +
@@ -2688,7 +3027,6 @@
       parts.push("</g><g fill=\"none\" stroke=\"#091846\" stroke-opacity=\"0.94\" stroke-width=\"" +
         graphEdgeWidth.toFixed(3) + "\" stroke-linecap=\"round\" stroke-linejoin=\"round\">");
       for (const [i, j] of highlightedGraph.edges) {
-        if (!highlightedVisible[i] || !highlightedVisible[j]) continue;
         const p = pointToLensExport(highlightedGraph.points[i], snapshot, exportSize, padding);
         const q = pointToLensExport(highlightedGraph.points[j], snapshot, exportSize, padding);
         parts.push("<path d=\"M " + p.x.toFixed(3) + " " + p.y.toFixed(3) +
@@ -2697,7 +3035,6 @@
       parts.push("</g><g fill=\"#ffe04d\" stroke=\"#091846\" stroke-width=\"" +
         Math.max(1.3, graphEdgeWidth * 0.7).toFixed(3) + "\">");
       for (let i = 0; i < highlightedGraph.points.length; i += 1) {
-        if (!highlightedVisible[i]) continue;
         const p = pointToLensExport(highlightedGraph.points[i], snapshot, exportSize, padding);
         parts.push("<circle cx=\"" + p.x.toFixed(3) + "\" cy=\"" + p.y.toFixed(3) +
           "\" r=\"" + Math.max(pointRadius * 1.65, 5).toFixed(3) + "\"/>");
@@ -2705,7 +3042,7 @@
       parts.push("</g>");
     }
 
-    parts.push("</g></svg>");
+    parts.push("</svg>");
 
     const blob = new Blob([parts.join("\n")], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -2731,7 +3068,7 @@
     const drawBounds = visibleBounds(12);
     const lens = lensScreenGeometry();
     const lensRadiusSquared = lens.radius * lens.radius;
-    const highlightedGraph = moserChainGraph(field, state.windowRadius);
+    const highlightedGraph = moserChainGraph(field, MOSER_SPINDLE_DEPTH);
     const visible = new Uint8Array(points.length);
     const inLens = new Uint8Array(points.length);
     const lensIndices = [];
@@ -2823,7 +3160,8 @@
       ctx.restore();
     }
 
-    drawMoserGraphOverlay(highlightedGraph, lens);
+    drawLensShade(lens);
+    drawMoserGraphOverlay(highlightedGraph);
 
     if (state.hoverPoint && state.showEdges && winningEdges.length) {
       const hoverPoint = state.hoverPoint;
@@ -2836,8 +3174,6 @@
       );
       if (highlightedEdges > 0) drawHoverPointHalo(hoverPoint);
     }
-
-    drawLensShade(lens);
 
     const lensWorldRadius = lens.radius / state.scale;
     const graphPointCountText = graphPointCount === null ? "paused" : formatNumber(graphPointCount);
