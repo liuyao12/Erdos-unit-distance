@@ -455,7 +455,7 @@
       degree: 4,
       numericDistanceOnly: true,
       sampleKind: "moserRing",
-      sampleBaseWindow: 1.3,
+      sampleBaseWindow: 1.8,
       embeddings: [
         [
           { re: 1, im: 0 },
@@ -477,9 +477,10 @@
       windowStep: 1,
       windowLabelPrefix: "D",
       windowValueFormat: "integer",
-      windowTitle: "Sample depth D: include powers of ω_3 up to D",
+      windowTitle: "Moser graph depth D: D=1 gives the spindle; larger D adds rotated copies",
       statusWindowLabel: "sample depth",
       statusWindowValue: "window",
+      highlightGraph: "moserChain",
       pointFill: "#c07a36",
       pointStroke: "rgba(125, 70, 24, 0.72)",
       edgeStroke: "rgba(176, 92, 31, 0.32)"
@@ -674,6 +675,12 @@
     "#d64b08",
     "#25a244",
     "#c026d3"
+  ];
+  const MOSER_GRAPH_BASE_COEFFS = [
+    [0, 0, 0, 0],
+    [1, 0, 0, 0],
+    [0, 1, 0, 0],
+    [1, 1, 0, 0]
   ];
   const LOWER_BOUND_DATA = window.UNIT_DISTANCE_LOWER_BOUNDS || null;
   const LOWER_BOUND_ENTRIES = LOWER_BOUND_DATA
@@ -1180,6 +1187,51 @@
     return base === "1" ? power : power + " · (" + base + ")";
   }
 
+  function physicalPointFromCoefficients(field, coeffs) {
+    const powers = fieldEmbeddingValues(field)[0];
+    let x = 0;
+    let y = 0;
+    for (let i = 0; i < coeffs.length; i += 1) {
+      x += coeffs[i] * powers[i].re;
+      y += coeffs[i] * powers[i].im;
+    }
+    return { x, y };
+  }
+
+  function moserChainGraph(field, depthValue) {
+    if (field.highlightGraph !== "moserChain") return null;
+
+    const depth = sampleDepth(field, depthValue);
+    const powers = moserRingPhysicalPowers(field, depth);
+    const points = [];
+    const seen = new Map();
+
+    for (let powerIndex = 0; powerIndex < powers.length; powerIndex += 1) {
+      const power = powers[powerIndex];
+      for (const coeffs of MOSER_GRAPH_BASE_COEFFS) {
+        const basePoint = physicalPointFromCoefficients(field, coeffs);
+        const point = rotatePointByUnit(basePoint.x, basePoint.y, power);
+        const key = roundedPointKey(point.x, point.y);
+        if (seen.has(key)) continue;
+
+        seen.set(key, points.length);
+        points.push({
+          x: point.x,
+          y: point.y,
+          coeffs: powerIndex === 0 ? coeffs.slice() : null,
+          expression: samplePowerExpression(field, coeffs, powerIndex)
+        });
+      }
+    }
+
+    return {
+      depth,
+      name: depth === 1 ? "Moser spindle" : "Moser chain",
+      points,
+      edges: buildUnitDistanceEdges(points)
+    };
+  }
+
   function buildMoserRingDataset(field, windowRadius, plan) {
     const started = performance.now();
     const depth = Number.isFinite(plan.sampleDepth)
@@ -1666,6 +1718,13 @@
       ? String(Math.round(value))
       : value.toFixed(2);
     return escapeHtml(label) + ": <strong>" + escapeHtml(formatted) + "</strong>";
+  }
+
+  function graphMeasureHtml(graph) {
+    if (!graph) return "";
+    return "<span>" + escapeHtml(graph.name) + ": <strong>" +
+      formatNumber(graph.points.length) + "v / " +
+      formatNumber(graph.edges.length) + "e</strong></span>";
   }
 
   function fieldPanelInfoHtml(field) {
@@ -2365,6 +2424,76 @@
     return drawn;
   }
 
+  function pointInsideLensWorld(point, center, radiusSquared) {
+    const dx = point.x - center.x;
+    const dy = point.y - center.y;
+    return dx * dx + dy * dy <= radiusSquared + 1e-12;
+  }
+
+  function drawMoserGraphOverlay(graph, lens) {
+    if (!graph || !graph.points.length) return 0;
+
+    const center = screenToWorld(lens.x, lens.y);
+    const lensWorldRadius = lens.radius / state.scale;
+    const radiusSquared = lensWorldRadius * lensWorldRadius;
+    const visible = graph.points.map((point) => pointInsideLensWorld(point, center, radiusSquared));
+    const edgeWidth = clamp(2.1, state.scale * 0.018, 4.6);
+    const pointRadius = clamp(4.2, state.scale * 0.033, 8);
+    let drawnEdges = 0;
+    let drawnPoints = 0;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(lens.x, lens.y, lens.radius, 0, Math.PI * 2);
+    ctx.clip();
+
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+    ctx.lineWidth = edgeWidth + 3.8;
+    ctx.beginPath();
+    for (const [i, j] of graph.edges) {
+      if (!visible[i] || !visible[j]) continue;
+      const p = worldToScreen(graph.points[i].x, graph.points[i].y);
+      const q = worldToScreen(graph.points[j].x, graph.points[j].y);
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(q.x, q.y);
+      drawnEdges += 1;
+    }
+    if (drawnEdges > 0) ctx.stroke();
+
+    ctx.strokeStyle = "rgba(9, 24, 70, 0.94)";
+    ctx.lineWidth = edgeWidth;
+    ctx.beginPath();
+    for (const [i, j] of graph.edges) {
+      if (!visible[i] || !visible[j]) continue;
+      const p = worldToScreen(graph.points[i].x, graph.points[i].y);
+      const q = worldToScreen(graph.points[j].x, graph.points[j].y);
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(q.x, q.y);
+    }
+    if (drawnEdges > 0) ctx.stroke();
+
+    ctx.fillStyle = "#ffe04d";
+    ctx.strokeStyle = "rgba(9, 24, 70, 0.98)";
+    ctx.lineWidth = Math.max(1.3, Math.min(2.3, pointRadius * 0.32));
+    ctx.beginPath();
+    for (let i = 0; i < graph.points.length; i += 1) {
+      if (!visible[i]) continue;
+      const p = worldToScreen(graph.points[i].x, graph.points[i].y);
+      ctx.moveTo(p.x + pointRadius, p.y);
+      ctx.arc(p.x, p.y, pointRadius, 0, Math.PI * 2);
+      drawnPoints += 1;
+    }
+    if (drawnPoints > 0) {
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    ctx.restore();
+    return drawnPoints;
+  }
+
   function drawHoverPointHalo(point) {
     if (!point) return;
     const ps = worldToScreen(point.x, point.y);
@@ -2465,6 +2594,10 @@
   function exportLensSvg() {
     const snapshot = lensPointSnapshot();
     const { activeDistance, edges } = currentLensDistanceEdges(snapshot);
+    const highlightedGraph = moserChainGraph(snapshot.field, state.windowRadius);
+    const highlightedVisible = highlightedGraph
+      ? highlightedGraph.points.map((point) => pointInsideLensWorld(point, snapshot.center, snapshot.radius * snapshot.radius))
+      : [];
     const exportSize = 1200;
     const padding = 36;
     const radius = (exportSize - padding * 2) / 2;
@@ -2488,6 +2621,11 @@
           field: snapshot.field.label,
           points: snapshot.indices.length,
           edges: edges.length,
+          highlightedGraph: highlightedGraph ? {
+            name: highlightedGraph.name,
+            vertices: highlightedGraph.points.length,
+            edges: highlightedGraph.edges.length
+          } : null,
           radius: Number(snapshot.radius.toFixed(6))
         })) +
         "</metadata>",
@@ -2514,7 +2652,40 @@
       parts.push("<circle cx=\"" + p.x.toFixed(3) + "\" cy=\"" + p.y.toFixed(3) +
         "\" r=\"" + pointRadius.toFixed(3) + "\"/>");
     }
-    parts.push("</g></g></svg>");
+    parts.push("</g>");
+
+    if (highlightedGraph) {
+      const graphEdgeWidth = Math.max(2.6, lineWidth * 1.6);
+      parts.push("<g fill=\"none\" stroke=\"#ffffff\" stroke-opacity=\"0.9\" stroke-width=\"" +
+        (graphEdgeWidth + 4).toFixed(3) + "\" stroke-linecap=\"round\" stroke-linejoin=\"round\">");
+      for (const [i, j] of highlightedGraph.edges) {
+        if (!highlightedVisible[i] || !highlightedVisible[j]) continue;
+        const p = pointToLensExport(highlightedGraph.points[i], snapshot, exportSize, padding);
+        const q = pointToLensExport(highlightedGraph.points[j], snapshot, exportSize, padding);
+        parts.push("<path d=\"M " + p.x.toFixed(3) + " " + p.y.toFixed(3) +
+          " L " + q.x.toFixed(3) + " " + q.y.toFixed(3) + "\"/>");
+      }
+      parts.push("</g><g fill=\"none\" stroke=\"#091846\" stroke-opacity=\"0.94\" stroke-width=\"" +
+        graphEdgeWidth.toFixed(3) + "\" stroke-linecap=\"round\" stroke-linejoin=\"round\">");
+      for (const [i, j] of highlightedGraph.edges) {
+        if (!highlightedVisible[i] || !highlightedVisible[j]) continue;
+        const p = pointToLensExport(highlightedGraph.points[i], snapshot, exportSize, padding);
+        const q = pointToLensExport(highlightedGraph.points[j], snapshot, exportSize, padding);
+        parts.push("<path d=\"M " + p.x.toFixed(3) + " " + p.y.toFixed(3) +
+          " L " + q.x.toFixed(3) + " " + q.y.toFixed(3) + "\"/>");
+      }
+      parts.push("</g><g fill=\"#ffe04d\" stroke=\"#091846\" stroke-width=\"" +
+        Math.max(1.3, graphEdgeWidth * 0.7).toFixed(3) + "\">");
+      for (let i = 0; i < highlightedGraph.points.length; i += 1) {
+        if (!highlightedVisible[i]) continue;
+        const p = pointToLensExport(highlightedGraph.points[i], snapshot, exportSize, padding);
+        parts.push("<circle cx=\"" + p.x.toFixed(3) + "\" cy=\"" + p.y.toFixed(3) +
+          "\" r=\"" + Math.max(pointRadius * 1.65, 5).toFixed(3) + "\"/>");
+      }
+      parts.push("</g>");
+    }
+
+    parts.push("</g></svg>");
 
     const blob = new Blob([parts.join("\n")], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -2540,6 +2711,7 @@
     const drawBounds = visibleBounds(12);
     const lens = lensScreenGeometry();
     const lensRadiusSquared = lens.radius * lens.radius;
+    const highlightedGraph = moserChainGraph(field, state.windowRadius);
     const visible = new Uint8Array(points.length);
     const inLens = new Uint8Array(points.length);
     const lensIndices = [];
@@ -2628,6 +2800,8 @@
       ctx.restore();
     }
 
+    drawMoserGraphOverlay(highlightedGraph, lens);
+
     if (state.hoverPoint && state.showEdges && winningEdges.length) {
       const hoverPoint = state.hoverPoint;
       const highlightedEdges = drawEdgeSegments(
@@ -2658,6 +2832,7 @@
         field,
         field.statusWindowValue === "window" ? state.windowRadius : lensWorldRadius
       ) + "</span>" +
+      graphMeasureHtml(highlightedGraph) +
       "</div>" +
       "</div>" +
       lowerBoundCardHtml(lensPoints) +
