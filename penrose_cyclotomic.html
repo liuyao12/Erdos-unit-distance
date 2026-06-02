@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fifth Cyclotomic Disk Window</title>
+  <style>
+    :root {
+      --paper: #fbfaf5;
+      --ink: #1d1c19;
+      --soft: #efede3;
+      --line: rgba(29, 28, 25, 0.16);
+      --muted: #68645b;
+      --accent: #27775a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    body {
+      display: grid;
+      grid-template-columns: minmax(260px, 320px) 1fr;
+    }
+
+    aside {
+      min-width: 0;
+      height: 100vh;
+      padding: 18px;
+      border-right: 1px solid var(--line);
+      background: rgba(251, 250, 245, 0.96);
+      overflow: auto;
+    }
+
+    main {
+      position: relative;
+      min-width: 0;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: 22px;
+      line-height: 1.1;
+      font-weight: 760;
+    }
+
+    .formula {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .group {
+      padding: 14px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .group:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 690;
+    }
+
+    .value {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      font-weight: 620;
+    }
+
+    select,
+    input[type="range"] {
+      width: 100%;
+    }
+
+    select {
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffefb;
+      color: var(--ink);
+      font: inherit;
+      font-size: 13px;
+      padding: 0 10px;
+    }
+
+    input[type="range"],
+    input[type="checkbox"] {
+      accent-color: var(--accent);
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 10px 0;
+      font-size: 13px;
+    }
+
+    .row span {
+      color: var(--muted);
+    }
+
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+    }
+
+    button {
+      min-width: 58px;
+      height: 36px;
+      padding: 0 10px;
+      display: inline-grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffefb;
+      color: var(--ink);
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      box-shadow: 0 1px 0 rgba(29, 28, 25, 0.04);
+    }
+
+    button:hover {
+      background: var(--soft);
+    }
+
+    button:disabled,
+    input:disabled {
+      opacity: 0.45;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 12px;
+    }
+
+    .stat {
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffefb;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 15px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat span {
+      color: var(--muted);
+    }
+
+    #windowCanvas {
+      width: 100%;
+      aspect-ratio: 1;
+      display: block;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffefb;
+    }
+
+    #stage {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    #stage.dragging {
+      cursor: grabbing;
+    }
+
+    .hud {
+      position: absolute;
+      left: 16px;
+      bottom: 16px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 254, 251, 0.88);
+      color: var(--muted);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      backdrop-filter: blur(8px);
+      pointer-events: none;
+    }
+
+    @media (max-width: 780px) {
+      body {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+      }
+
+      aside {
+        height: auto;
+        max-height: 46vh;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      main {
+        height: 54vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <aside>
+    <h1>Fifth Cyclotomic Window</h1>
+    <p class="formula">Z[zeta5], star map zeta -&gt; zeta^2, disk-window vertices, and unit edges x -&gt; x + zeta^j</p>
+
+    <section class="group">
+      <label for="windowMode">Window mode</label>
+      <select id="windowMode">
+        <option value="single">one disk</option>
+        <option value="five">five disks</option>
+        <option value="six">one plus five disks</option>
+      </select>
+    </section>
+
+    <section class="group">
+      <label for="windowRadius">Disk radius <span class="value" id="windowRadiusValue">0.85</span></label>
+      <input id="windowRadius" type="range" min="0.25" max="2.40" value="0.85" step="0.01">
+    </section>
+
+    <section class="group">
+      <label for="centerRadius">Orbit radius <span class="value" id="centerRadiusValue">1.35</span></label>
+      <input id="centerRadius" type="range" min="0" max="2.60" value="1.35" step="0.01">
+    </section>
+
+    <section class="group">
+      <label for="viewRadius">Patch radius <span class="value" id="viewRadiusValue">10.0</span></label>
+      <input id="viewRadius" type="range" min="4" max="18" value="10" step="0.5">
+    </section>
+
+    <section class="group">
+      <div class="row">
+        <span>Unit edges</span>
+        <input id="showEdges" type="checkbox" checked>
+      </div>
+      <div class="row">
+        <span>Accepted points</span>
+        <input id="showPoints" type="checkbox" checked>
+      </div>
+      <div class="buttons">
+        <button id="homeButton" type="button" aria-label="Center view" title="Center view">Home</button>
+        <button id="pngButton" type="button" aria-label="Export PNG" title="Export PNG">PNG</button>
+      </div>
+    </section>
+
+    <section class="group">
+      <canvas id="windowCanvas"></canvas>
+    </section>
+
+    <section class="group">
+      <div class="stats">
+        <div class="stat"><strong id="pointCount">0</strong><span>vertices</span></div>
+        <div class="stat"><strong id="edgeCount">0</strong><span>unit edges</span></div>
+      </div>
+    </section>
+  </aside>
+
+  <main>
+    <canvas id="stage"></canvas>
+    <div class="hud" id="hud">disk R 0.85</div>
+  </main>
+
+  <script>
+    const TWO_PI = Math.PI * 2;
+    const roots = Array.from({ length: 5 }, (_, i) => ({
+      x: Math.cos(TWO_PI * i / 5),
+      y: Math.sin(TWO_PI * i / 5)
+    }));
+    const starRoots = Array.from({ length: 5 }, (_, i) => ({
+      x: Math.cos(TWO_PI * 2 * i / 5),
+      y: Math.sin(TWO_PI * 2 * i / 5)
+    }));
+    const coeffDeltas = [
+      [1, 0, 0, 0],
+      [0, 1, 0, 0],
+      [0, 0, 1, 0],
+      [0, 0, 0, 1],
+      [-1, -1, -1, -1]
+    ];
+
+    const stage = document.getElementById("stage");
+    const ctx = stage.getContext("2d");
+    const windowCanvas = document.getElementById("windowCanvas");
+    const wctx = windowCanvas.getContext("2d");
+    const controls = {
+      windowMode: document.getElementById("windowMode"),
+      windowRadius: document.getElementById("windowRadius"),
+      centerRadius: document.getElementById("centerRadius"),
+      viewRadius: document.getElementById("viewRadius"),
+      showEdges: document.getElementById("showEdges"),
+      showPoints: document.getElementById("showPoints")
+    };
+    const labels = {
+      windowRadius: document.getElementById("windowRadiusValue"),
+      centerRadius: document.getElementById("centerRadiusValue"),
+      viewRadius: document.getElementById("viewRadiusValue"),
+      points: document.getElementById("pointCount"),
+      edges: document.getElementById("edgeCount"),
+      hud: document.getElementById("hud")
+    };
+    const state = {
+      zoom: 38,
+      panX: 0,
+      panY: 0,
+      dragging: false,
+      dragX: 0,
+      dragY: 0,
+      data: null
+    };
+
+    function keyOf(c) {
+      return c.join(",");
+    }
+
+    function addCoeff(a, b) {
+      return [a[0] + b[0], a[1] + b[1], a[2] + b[2], a[3] + b[3]];
+    }
+
+    function physicalFromCoeff(c) {
+      return {
+        x: c[0] * roots[0].x + c[1] * roots[1].x + c[2] * roots[2].x + c[3] * roots[3].x,
+        y: c[0] * roots[0].y + c[1] * roots[1].y + c[2] * roots[2].y + c[3] * roots[3].y
+      };
+    }
+
+    function internalFromCoeff(c) {
+      return {
+        x: c[0] * starRoots[0].x + c[1] * starRoots[1].x + c[2] * starRoots[2].x + c[3] * starRoots[3].x,
+        y: c[0] * starRoots[0].y + c[1] * starRoots[1].y + c[2] * starRoots[2].y + c[3] * starRoots[3].y
+      };
+    }
+
+    function diskCenters(mode, orbitRadius) {
+      if (mode === "single") return [{ x: 0, y: 0 }];
+      const orbit = roots.map((z) => ({ x: orbitRadius * z.x, y: orbitRadius * z.y }));
+      return mode === "six" ? [{ x: 0, y: 0 }, ...orbit] : orbit;
+    }
+
+    function acceptedByWindow(internal, centers, radius) {
+      const rr = radius * radius;
+      for (const center of centers) {
+        const dx = internal.x - center.x;
+        const dy = internal.y - center.y;
+        if (dx * dx + dy * dy <= rr + 1e-10) return true;
+      }
+      return false;
+    }
+
+    function buildPatch() {
+      const viewRadius = Number(controls.viewRadius.value);
+      const windowRadius = Number(controls.windowRadius.value);
+      const centerRadius = Number(controls.centerRadius.value);
+      const mode = controls.windowMode.value;
+      const centers = diskCenters(mode, centerRadius);
+      const searchRadius = viewRadius + 2.2;
+      const maxWindow = windowRadius + (mode === "single" ? 0 : centerRadius);
+      const bound = Math.ceil(0.78 * (searchRadius + maxWindow) + 3);
+      const points = [];
+      const all = new Map();
+      const visible = new Set();
+
+      controls.centerRadius.disabled = mode === "single";
+
+      for (let a0 = -bound; a0 <= bound; a0 += 1) {
+        for (let a1 = -bound; a1 <= bound; a1 += 1) {
+          for (let a2 = -bound; a2 <= bound; a2 += 1) {
+            for (let a3 = -bound; a3 <= bound; a3 += 1) {
+              const coeff = [a0, a1, a2, a3];
+              const phys = physicalFromCoeff(coeff);
+              const dist = Math.hypot(phys.x, phys.y);
+              if (dist > searchRadius) continue;
+              const internal = internalFromCoeff(coeff);
+              if (!acceptedByWindow(internal, centers, windowRadius)) continue;
+              const point = { coeff, key: keyOf(coeff), phys, internal, dist };
+              all.set(point.key, point);
+              if (dist <= viewRadius + 1e-8) {
+                points.push(point);
+                visible.add(point.key);
+              }
+            }
+          }
+        }
+      }
+
+      const edges = [];
+      for (const point of all.values()) {
+        for (const delta of coeffDeltas) {
+          const other = all.get(keyOf(addCoeff(point.coeff, delta)));
+          if (!other) continue;
+          if (visible.has(point.key) || visible.has(other.key)) edges.push({ a: point, b: other });
+        }
+      }
+
+      state.data = { points, all, visible, edges, viewRadius, windowRadius, centerRadius, centers, mode, bound };
+      labels.points.textContent = points.length.toString();
+      labels.edges.textContent = edges.length.toString();
+      labels.windowRadius.textContent = windowRadius.toFixed(2);
+      labels.centerRadius.textContent = centerRadius.toFixed(2);
+      labels.viewRadius.textContent = viewRadius.toFixed(1);
+      labels.hud.textContent = `disk R ${windowRadius.toFixed(2)} | search ${bound}`;
+    }
+
+    function fitCanvases() {
+      const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+      const rect = stage.getBoundingClientRect();
+      stage.width = Math.max(1, Math.floor(rect.width * dpr));
+      stage.height = Math.max(1, Math.floor(rect.height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const wrect = windowCanvas.getBoundingClientRect();
+      windowCanvas.width = Math.max(1, Math.floor(wrect.width * dpr));
+      windowCanvas.height = Math.max(1, Math.floor(wrect.height * dpr));
+      wctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function toScreen(pt) {
+      const rect = stage.getBoundingClientRect();
+      return {
+        x: rect.width / 2 + state.panX + pt.x * state.zoom,
+        y: rect.height / 2 + state.panY - pt.y * state.zoom
+      };
+    }
+
+    function drawStage() {
+      const rect = stage.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      ctx.fillStyle = "#fbfaf5";
+      ctx.fillRect(0, 0, rect.width, rect.height);
+      const data = state.data;
+      if (!data) return;
+
+      ctx.save();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(29, 28, 25, 0.08)";
+      const gridStep = state.zoom;
+      const ox = rect.width / 2 + state.panX;
+      const oy = rect.height / 2 + state.panY;
+      for (let x = ox % gridStep; x < rect.width; x += gridStep) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, rect.height);
+        ctx.stroke();
+      }
+      for (let y = oy % gridStep; y < rect.height; y += gridStep) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(rect.width, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      if (controls.showEdges.checked) {
+        ctx.save();
+        ctx.lineWidth = Math.max(1.2, Math.min(2.2, state.zoom * 0.045));
+        ctx.lineCap = "round";
+        ctx.strokeStyle = "rgba(29, 28, 25, 0.62)";
+        for (const edge of data.edges) {
+          const a = toScreen(edge.a.phys);
+          const b = toScreen(edge.b.phys);
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      if (controls.showPoints.checked) {
+        ctx.save();
+        for (const point of data.points) {
+          const s = toScreen(point.phys);
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, Math.max(2.1, Math.min(4.2, state.zoom * 0.085)), 0, TWO_PI);
+          ctx.fillStyle = "#1d1c19";
+          ctx.fill();
+          ctx.strokeStyle = "rgba(255, 254, 251, 0.9)";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+
+    function windowToScreen(pt, center, scale) {
+      return {
+        x: center.x + pt.x * scale,
+        y: center.y - pt.y * scale
+      };
+    }
+
+    function drawWindow() {
+      const rect = windowCanvas.getBoundingClientRect();
+      wctx.clearRect(0, 0, rect.width, rect.height);
+      wctx.fillStyle = "#fffefb";
+      wctx.fillRect(0, 0, rect.width, rect.height);
+      const data = state.data;
+      if (!data) return;
+      const center = { x: rect.width / 2, y: rect.height / 2 };
+      const extent = Math.max(1, data.windowRadius + (data.mode === "single" ? 0 : data.centerRadius));
+      const scale = rect.width / (2 * extent + 1.2);
+
+      wctx.save();
+      wctx.lineWidth = 1;
+      for (const disk of data.centers) {
+        const s = windowToScreen(disk, center, scale);
+        wctx.beginPath();
+        wctx.arc(s.x, s.y, data.windowRadius * scale, 0, TWO_PI);
+        wctx.fillStyle = "rgba(29, 28, 25, 0.045)";
+        wctx.strokeStyle = "rgba(29, 28, 25, 0.44)";
+        wctx.fill();
+        wctx.stroke();
+      }
+
+      for (const point of data.points) {
+        const s = windowToScreen(point.internal, center, scale);
+        wctx.beginPath();
+        wctx.arc(s.x, s.y, 2, 0, TWO_PI);
+        wctx.fillStyle = "#1d1c19";
+        wctx.fill();
+      }
+
+      wctx.beginPath();
+      wctx.arc(center.x, center.y, 3, 0, TWO_PI);
+      wctx.fillStyle = "#1d1c19";
+      wctx.fill();
+      wctx.restore();
+    }
+
+    function render() {
+      drawStage();
+      drawWindow();
+    }
+
+    function rebuild() {
+      buildPatch();
+      render();
+    }
+
+    function resetView() {
+      state.panX = 0;
+      state.panY = 0;
+      const rect = stage.getBoundingClientRect();
+      const radius = Number(controls.viewRadius.value);
+      state.zoom = Math.max(20, Math.min(rect.width, rect.height) / (2.2 * radius));
+      render();
+    }
+
+    function exportPng() {
+      const link = document.createElement("a");
+      link.download = "fifth-cyclotomic-disk-window.png";
+      link.href = stage.toDataURL("image/png");
+      link.click();
+    }
+
+    for (const input of Object.values(controls)) {
+      input.addEventListener("input", rebuild);
+      input.addEventListener("change", rebuild);
+    }
+    document.getElementById("homeButton").addEventListener("click", resetView);
+    document.getElementById("pngButton").addEventListener("click", exportPng);
+
+    stage.addEventListener("pointerdown", (event) => {
+      state.dragging = true;
+      state.dragX = event.clientX;
+      state.dragY = event.clientY;
+      stage.classList.add("dragging");
+      stage.setPointerCapture(event.pointerId);
+    });
+
+    stage.addEventListener("pointermove", (event) => {
+      if (!state.dragging) return;
+      state.panX += event.clientX - state.dragX;
+      state.panY += event.clientY - state.dragY;
+      state.dragX = event.clientX;
+      state.dragY = event.clientY;
+      render();
+    });
+
+    stage.addEventListener("pointerup", (event) => {
+      state.dragging = false;
+      stage.classList.remove("dragging");
+      stage.releasePointerCapture(event.pointerId);
+    });
+
+    stage.addEventListener("wheel", (event) => {
+      event.preventDefault();
+      const rect = stage.getBoundingClientRect();
+      const before = {
+        x: (event.clientX - rect.left - rect.width / 2 - state.panX) / state.zoom,
+        y: -(event.clientY - rect.top - rect.height / 2 - state.panY) / state.zoom
+      };
+      const factor = Math.exp(-event.deltaY * 0.001);
+      state.zoom = Math.max(10, Math.min(180, state.zoom * factor));
+      state.panX = event.clientX - rect.left - rect.width / 2 - before.x * state.zoom;
+      state.panY = event.clientY - rect.top - rect.height / 2 + before.y * state.zoom;
+      render();
+    }, { passive: false });
+
+    window.addEventListener("resize", () => {
+      fitCanvases();
+      render();
+    });
+
+    fitCanvases();
+    rebuild();
+    resetView();
+  </script>
+</body>
+</html>

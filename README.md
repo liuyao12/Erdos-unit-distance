@@ -4,6 +4,8 @@ Interactive browser explorer for planar point sets obtained from rings and simpl
 
 [Open the interactive explorer](https://liuyao12.github.io/Erdos-unit-distance/)
 
+[Open the fifth cyclotomic disk-window lab](https://liuyao12.github.io/Erdos-unit-distance/penrose_cyclotomic.html)
+
 ![Screenshot of the number-field point-set explorer](docs/screenshot.png)
 
 The page is entirely browser-side JavaScript. Viewing or using it does not require Python, a local server, or a build step.
