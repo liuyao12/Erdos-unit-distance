@@ -2894,7 +2894,7 @@
     let drawn = 0;
     ctx.save();
     ctx.lineJoin = "round";
-    ctx.lineWidth = Math.max(0.45, Math.min(1.15, state.scale * 0.01));
+    ctx.lineWidth = Math.max(0.35, Math.min(0.85, state.scale * 0.007));
     for (const tile of tiles) {
       if (!tile.vertices.some((index) => visible[index])) continue;
 
@@ -2909,8 +2909,8 @@
       ctx.closePath();
 
       const color = cyclotomicRhombColor(tile.shapeIndex);
-      ctx.fillStyle = colorWithAlpha(color, 0.095);
-      ctx.strokeStyle = colorWithAlpha(color, 0.28);
+      ctx.fillStyle = colorWithAlpha(color, 0.04);
+      ctx.strokeStyle = colorWithAlpha(color, 0.13);
       ctx.fill();
       ctx.stroke();
       drawn += 1;
