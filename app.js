@@ -1794,8 +1794,8 @@
   }
 
   function leaderEdgeLineWidth(multiplier) {
-    const base = Math.pow(Math.max(1, state.scale) / 80, 0.9);
-    return clamp(0.14 * multiplier, base * multiplier, 2.4 * multiplier);
+    const base = Math.max(1, state.scale) / 80;
+    return clamp(0.05 * multiplier, base * multiplier, 2.4 * multiplier);
   }
 
   function canonicalDifferenceKey(coeffs) {
@@ -2353,7 +2353,7 @@
     bitmapCtx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
     bitmapCtx.clearRect(0, 0, cssWidth, cssHeight);
     bitmapCtx.lineJoin = "round";
-    bitmapCtx.lineWidth = Math.max(0.35, Math.min(0.85, state.scale * 0.007));
+    bitmapCtx.lineWidth = Math.max(0.08, Math.min(0.85, state.scale * 0.007));
 
     const view = {
       centerX: state.centerX,
@@ -3132,7 +3132,7 @@
   function drawMoserGraphOverlay(graph) {
     if (!graph || !graph.points.length) return 0;
 
-    const edgeWidth = clamp(2.1, state.scale * 0.018, 4.6);
+    const edgeWidth = clamp(0.45, state.scale * 0.018, 4.6);
     const pointRadius = clamp(4.2, state.scale * 0.033, 8);
     let drawnEdges = 0;
     let drawnPoints = 0;
@@ -3141,7 +3141,7 @@
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
-    ctx.lineWidth = edgeWidth + 3.8;
+    ctx.lineWidth = edgeWidth + Math.max(0.9, edgeWidth * 0.95);
     ctx.beginPath();
     for (const [i, j] of graph.edges) {
       const p = worldToScreen(graph.points[i].x, graph.points[i].y);
