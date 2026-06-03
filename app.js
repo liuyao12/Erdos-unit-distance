@@ -655,19 +655,19 @@
   ];
 
   const FIELD_POSET_NODES = [
-    { id: "rational", labelHtml: "<span class=\"field-label\"><strong>Q</strong></span>", x: 50, y: 92, degree: 1, disabled: true },
-    { id: "gaussian", fieldId: "gaussian", x: 24, y: 72 },
-    { id: "eisenstein", fieldId: "eisenstein", x: 50, y: 72 },
-    { id: "sqrtMinus2", fieldId: "sqrtMinus2", x: 77, y: 72 },
-    { id: "zeta5", fieldId: "zeta5", x: 12, y: 50 },
-    { id: "zeta8", fieldId: "zeta8", x: 31, y: 50 },
-    { id: "zeta12", fieldId: "zeta12", x: 50, y: 50 },
-    { id: "moser", fieldId: "moserRing", labelHtml: "<span class=\"field-label\">Moser</span>", x: 68, y: 50 },
-    { id: "sqrtMinus2SqrtMinus3", fieldId: "sqrtMinus2SqrtMinus3OK", x: 90, y: 50 },
-    { id: "zeta7", fieldId: "zeta7", x: 20, y: 26 },
-    { id: "zeta9", fieldId: "zeta9", x: 42, y: 26 },
-    { id: "zeta30", fieldId: "zeta30", x: 61, y: 26 },
-    { id: "zeta24", fieldId: "zeta24", x: 80, y: 26 }
+    { id: "rational", labelHtml: "<span class=\"field-label\"><strong>Q</strong></span>", x: 50, degree: 1, disabled: true },
+    { id: "gaussian", fieldId: "gaussian", x: 24 },
+    { id: "eisenstein", fieldId: "eisenstein", x: 50 },
+    { id: "sqrtMinus2", fieldId: "sqrtMinus2", x: 77 },
+    { id: "zeta5", fieldId: "zeta5", x: 12 },
+    { id: "zeta8", fieldId: "zeta8", x: 31 },
+    { id: "zeta12", fieldId: "zeta12", x: 50 },
+    { id: "moser", fieldId: "moserRing", labelHtml: "<span class=\"field-label\">Moser</span>", x: 68 },
+    { id: "sqrtMinus2SqrtMinus3", fieldId: "sqrtMinus2SqrtMinus3OK", x: 90 },
+    { id: "zeta7", fieldId: "zeta7", x: 28 },
+    { id: "zeta9", fieldId: "zeta9", x: 62 },
+    { id: "zeta30", fieldId: "zeta30", x: 44 },
+    { id: "zeta24", fieldId: "zeta24", x: 76 }
   ];
 
   const FIELD_POSET_EDGES = [
@@ -703,6 +703,10 @@
 
   const LATTICE_FIELD_ENDPOINT_ID = "__fieldK";
   const LATTICE_INTEGER_ENDPOINT_ID = "__integersZ";
+  const FIELD_POSET_TOP_Y = 14;
+  const FIELD_POSET_BOTTOM_Y = 90;
+  const FIELD_POSET_MIN_DEGREE = Math.min(...FIELD_POSET_NODES.map(fieldPosetNodeDegree));
+  const FIELD_POSET_MAX_DEGREE = Math.max(...FIELD_POSET_NODES.map(fieldPosetNodeDegree));
   const embeddingGeometryCache = new Map();
   const rootPowerCoefficientCache = new Map();
   const exactAlgebraCache = new Map();
@@ -1038,11 +1042,19 @@
     return field ? fieldDegree(field) : 1;
   }
 
+  function fieldPosetYForDegree(degree) {
+    if (FIELD_POSET_MAX_DEGREE === FIELD_POSET_MIN_DEGREE) return 50;
+    const boundedDegree = clamp(FIELD_POSET_MIN_DEGREE, degree, FIELD_POSET_MAX_DEGREE);
+    const t = (boundedDegree - FIELD_POSET_MIN_DEGREE) /
+      (FIELD_POSET_MAX_DEGREE - FIELD_POSET_MIN_DEGREE);
+    return FIELD_POSET_BOTTOM_Y - t * (FIELD_POSET_BOTTOM_Y - FIELD_POSET_TOP_Y);
+  }
+
   function fieldPosetNodePosition(node) {
     const degree = fieldPosetNodeDegree(node);
     return {
       x: node.x,
-      y: Number.isFinite(node.y) ? node.y : 50,
+      y: fieldPosetYForDegree(degree),
       degree
     };
   }
