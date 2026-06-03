@@ -2647,6 +2647,26 @@
     return edges;
   }
 
+  function buildIncidentDistanceEdges(field, points, sourceIndex, targetKey) {
+    if (!targetKey || sourceIndex < 0 || sourceIndex >= points.length) return [];
+    const edges = [];
+    const keyCache = new Map();
+    const p = points[sourceIndex];
+
+    for (let j = 0; j < points.length; j += 1) {
+      if (j === sourceIndex) continue;
+      const q = points[j];
+      const dx = p.x - q.x;
+      const dy = p.y - q.y;
+      const distanceSquared = dx * dx + dy * dy;
+      if (pairDistanceRaceKey(field, p, q, distanceSquared, keyCache) === targetKey) {
+        edges.push(sourceIndex < j ? [sourceIndex, j] : [j, sourceIndex]);
+      }
+    }
+
+    return edges;
+  }
+
   function graphPointCountFromEdges(edges) {
     if (!edges.length) return 0;
     const vertices = new Set();
@@ -3414,6 +3434,10 @@
     const graphPointCount = distanceRace.exact && activeDistance
       ? graphPointCountFromEdges(winningEdges)
       : null;
+    const hoverPointIndex = state.hoverPoint ? points.indexOf(state.hoverPoint) : -1;
+    const hoverEdges = activeDistance && hoverPointIndex >= 0
+      ? buildIncidentDistanceEdges(field, points, hoverPointIndex, activeDistance.key)
+      : [];
     let lensEdges = 0;
 
     if (distanceRace.exact) {
@@ -3473,16 +3497,20 @@
     drawLensShade(lens);
     drawMoserGraphOverlay(highlightedGraph);
 
-    if (state.hoverPoint && state.showEdges && winningEdges.length) {
-      const hoverPoint = state.hoverPoint;
-      const highlightedEdges = drawEdgeSegments(
-        winningEdges,
+    if (state.hoverPoint && hoverEdges.length) {
+      drawEdgeSegments(
+        hoverEdges,
         points,
-        leaderEdgeStroke(activeDistance, 0.94),
-        leaderEdgeLineWidth(2.65),
-        (i, j) => points[i] === hoverPoint || points[j] === hoverPoint
+        "rgba(255, 255, 255, 0.82)",
+        leaderEdgeLineWidth(4.1)
       );
-      if (highlightedEdges > 0) drawHoverPointHalo(hoverPoint);
+      drawEdgeSegments(
+        hoverEdges,
+        points,
+        leaderEdgeStroke(activeDistance, 0.96),
+        leaderEdgeLineWidth(2.65)
+      );
+      drawHoverPointHalo(state.hoverPoint);
     }
 
     const lensWorldRadius = lens.radius / state.scale;
