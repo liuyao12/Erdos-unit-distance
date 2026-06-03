@@ -770,6 +770,9 @@
     dirty: true,
     dataset: null,
     rhombOverlayCache: null,
+    rhombBitmapCache: null,
+    rhombViewMoving: false,
+    rhombViewMotionTimer: 0,
     hoverPoint: null,
     selectedDistanceKey: null
   };
@@ -1608,6 +1611,7 @@
     const plan = datasetPlan(field, windowRadius, viewBounds);
     const dataset = buildDataset(field, windowRadius, plan);
     state.dataset = dataset;
+    clearRhombOverlayCache();
     return dataset;
   }
 
@@ -2097,7 +2101,7 @@
     const total = rhombOverlay.limitExceeded || rhombOverlay.suspended
       ? "paused"
       : formatNumber(rhombOverlay.drawn);
-    return "<span>rhombs shown: <strong>" + total + "</strong></span>";
+    return "<span>rhombs cached: <strong>" + total + "</strong></span>";
   }
 
   function fieldPanelInfoHtml(field) {
@@ -2200,8 +2204,48 @@
     return field.id + "|" + windowRadius;
   }
 
+  function clearRhombBitmapCache() {
+    state.rhombBitmapCache = null;
+  }
+
   function clearRhombOverlayCache() {
     state.rhombOverlayCache = null;
+    clearRhombBitmapCache();
+  }
+
+  function beginRhombViewMotion() {
+    state.rhombViewMoving = true;
+    if (state.rhombViewMotionTimer) {
+      clearTimeout(state.rhombViewMotionTimer);
+      state.rhombViewMotionTimer = 0;
+    }
+  }
+
+  function finishRhombViewMotion() {
+    if (state.rhombViewMotionTimer) {
+      clearTimeout(state.rhombViewMotionTimer);
+      state.rhombViewMotionTimer = 0;
+    }
+    state.rhombViewMoving = false;
+  }
+
+  function settleRhombViewMotion(delay = 160) {
+    beginRhombViewMotion();
+    state.rhombViewMotionTimer = setTimeout(() => {
+      state.rhombViewMotionTimer = 0;
+      state.rhombViewMoving = false;
+      state.dirty = true;
+      requestDraw();
+    }, delay);
+  }
+
+  function boundsForView(centerX, centerY, scale, width, height, extra) {
+    return {
+      xMin: centerX + (-extra - width / 2) / scale,
+      xMax: centerX + (width + extra - width / 2) / scale,
+      yMin: centerY - (height + extra - height / 2) / scale,
+      yMax: centerY - (-extra - height / 2) / scale
+    };
   }
 
   function buildCyclotomicRhombTileCache(field, dataset, key) {
@@ -2265,13 +2309,116 @@
     return state.rhombOverlayCache;
   }
 
-  function drawCyclotomicRhombTiles(field, dataset, drawBounds) {
+  function rhombBitmapCacheMatches(cache, key) {
+    return cache &&
+      cache.key === key &&
+      cache.dpr === state.dpr &&
+      cache.width === state.width &&
+      cache.height === state.height &&
+      Math.abs(cache.centerX - state.centerX) < 1e-9 &&
+      Math.abs(cache.centerY - state.centerY) < 1e-9 &&
+      Math.abs(cache.scale - state.scale) < 1e-9;
+  }
+
+  function drawRhombBitmapCache(cache) {
+    const scaleRatio = state.scale / cache.scale;
+    const sourceWidth = cache.width + cache.margin * 2;
+    const sourceHeight = cache.height + cache.margin * 2;
+    const x = state.width / 2 +
+      (-cache.margin - cache.width / 2) * scaleRatio +
+      (cache.centerX - state.centerX) * state.scale;
+    const y = state.height / 2 +
+      (-cache.margin - cache.height / 2) * scaleRatio -
+      (cache.centerY - state.centerY) * state.scale;
+    ctx.drawImage(cache.canvas, x, y, sourceWidth * scaleRatio, sourceHeight * scaleRatio);
+  }
+
+  function buildRhombBitmapCache(tileCache, key) {
+    const margin = Math.max(180, Math.min(420, Math.max(state.width, state.height) * 0.32));
+    const cssWidth = state.width + margin * 2;
+    const cssHeight = state.height + margin * 2;
+    const bitmapCanvas = document.createElement("canvas");
+    bitmapCanvas.width = Math.ceil(cssWidth * state.dpr);
+    bitmapCanvas.height = Math.ceil(cssHeight * state.dpr);
+    const bitmapCtx = bitmapCanvas.getContext("2d");
+    bitmapCtx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+    bitmapCtx.clearRect(0, 0, cssWidth, cssHeight);
+    bitmapCtx.lineJoin = "round";
+    bitmapCtx.lineWidth = Math.max(0.35, Math.min(0.85, state.scale * 0.007));
+
+    const view = {
+      centerX: state.centerX,
+      centerY: state.centerY,
+      scale: state.scale,
+      width: state.width,
+      height: state.height,
+      margin
+    };
+    const bitmapBounds = boundsForView(view.centerX, view.centerY, view.scale, view.width, view.height, margin);
+    let drawn = 0;
+
+    for (const tile of tileCache.tiles) {
+      if (
+        tile.maxX < bitmapBounds.xMin ||
+        tile.minX > bitmapBounds.xMax ||
+        tile.maxY < bitmapBounds.yMin ||
+        tile.minY > bitmapBounds.yMax
+      ) {
+        continue;
+      }
+
+      const first = tile.vertices[0];
+      bitmapCtx.beginPath();
+      bitmapCtx.moveTo(
+        view.margin + view.width / 2 + (first.x - view.centerX) * view.scale,
+        view.margin + view.height / 2 - (first.y - view.centerY) * view.scale
+      );
+      for (let i = 1; i < tile.vertices.length; i += 1) {
+        const vertex = tile.vertices[i];
+        bitmapCtx.lineTo(
+          view.margin + view.width / 2 + (vertex.x - view.centerX) * view.scale,
+          view.margin + view.height / 2 - (vertex.y - view.centerY) * view.scale
+        );
+      }
+      bitmapCtx.closePath();
+
+      const color = cyclotomicRhombColor(tile.shapeIndex);
+      bitmapCtx.fillStyle = colorWithAlpha(color, 0.04);
+      bitmapCtx.strokeStyle = colorWithAlpha(color, 0.13);
+      bitmapCtx.fill();
+      bitmapCtx.stroke();
+      drawn += 1;
+    }
+
+    return {
+      key,
+      canvas: bitmapCanvas,
+      drawn,
+      margin,
+      width: state.width,
+      height: state.height,
+      dpr: state.dpr,
+      centerX: state.centerX,
+      centerY: state.centerY,
+      scale: state.scale
+    };
+  }
+
+  function drawCyclotomicRhombTiles(field, dataset) {
     if (!field || field.type !== "cyclotomic" || !dataset.points.length) {
       return { drawn: 0, limitExceeded: false, suspended: false };
     }
 
     const key = rhombOverlayCacheKey(field, dataset.windowRadius);
-    if (state.dragging && (!state.rhombOverlayCache || state.rhombOverlayCache.key !== key)) {
+    if (state.rhombViewMoving) {
+      if (state.rhombBitmapCache && state.rhombBitmapCache.key === key) {
+        drawRhombBitmapCache(state.rhombBitmapCache);
+        return {
+          drawn: state.rhombBitmapCache.drawn,
+          limitExceeded: false,
+          suspended: false
+        };
+      }
       return { drawn: 0, limitExceeded: false, suspended: true };
     }
 
@@ -2280,41 +2427,16 @@
       return { drawn: 0, limitExceeded: true, suspended: false };
     }
 
-    let drawn = 0;
-
-    ctx.save();
-    ctx.lineJoin = "round";
-    ctx.lineWidth = Math.max(0.35, Math.min(0.85, state.scale * 0.007));
-    for (const tile of cache.tiles) {
-      if (
-        tile.maxX < drawBounds.xMin ||
-        tile.minX > drawBounds.xMax ||
-        tile.maxY < drawBounds.yMin ||
-        tile.minY > drawBounds.yMax
-      ) {
-        continue;
-      }
-
-      const first = worldToScreen(tile.vertices[0].x, tile.vertices[0].y);
-      ctx.beginPath();
-      ctx.moveTo(first.x, first.y);
-      for (let i = 1; i < tile.vertices.length; i += 1) {
-        const vertex = tile.vertices[i];
-        const screen = worldToScreen(vertex.x, vertex.y);
-        ctx.lineTo(screen.x, screen.y);
-      }
-      ctx.closePath();
-
-      const color = cyclotomicRhombColor(tile.shapeIndex);
-      ctx.fillStyle = colorWithAlpha(color, 0.04);
-      ctx.strokeStyle = colorWithAlpha(color, 0.13);
-      ctx.fill();
-      ctx.stroke();
-      drawn += 1;
+    if (!rhombBitmapCacheMatches(state.rhombBitmapCache, key)) {
+      state.rhombBitmapCache = buildRhombBitmapCache(cache, key);
     }
-    ctx.restore();
+    drawRhombBitmapCache(state.rhombBitmapCache);
 
-    return { drawn, limitExceeded: false, suspended: false };
+    return {
+      drawn: state.rhombBitmapCache.drawn,
+      limitExceeded: false,
+      suspended: false
+    };
   }
 
   function coefficientsEqual(a, b) {
@@ -2839,6 +2961,7 @@
     canvas.style.height = state.height + "px";
     ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
     if (!isMobileFieldDrawer()) closeFieldPanel();
+    clearRhombBitmapCache();
     state.dirty = true;
     requestAnimationFrame(renderFieldPosetEdges);
     requestDraw();
@@ -2858,6 +2981,7 @@
     const field = currentField();
     state.scale = Math.max(22, Math.min(1200, lensScreenGeometry().radius / field.defaultLensWorldRadius));
     placeOriginAtLensCenter();
+    clearRhombBitmapCache();
     state.autoFitPending = true;
     state.dirty = true;
     requestDraw();
@@ -2865,11 +2989,13 @@
 
   function goHome() {
     placeOriginAtLensCenter();
+    clearRhombBitmapCache();
     state.dirty = true;
     requestDraw();
   }
 
   function zoomAt(sx, sy, factor) {
+    settleRhombViewMotion();
     const before = screenToWorld(sx, sy);
     state.scale = Math.max(8, Math.min(1200, state.scale * factor));
     placeWorldPointAtScreen(before.x, before.y, sx, sy);
@@ -3278,7 +3404,7 @@
     const drawEdgeLimit = 900000;
     const countEdgeLimit = 1600000;
     const rhombOverlay = state.showTiles
-      ? drawCyclotomicRhombTiles(field, dataset, drawBounds)
+      ? drawCyclotomicRhombTiles(field, dataset)
       : { drawn: 0, limitExceeded: false };
     const distanceRace = buildDistanceRace(field, points, lensIndices, state.selectedDistanceKey);
     const activeDistance = distanceRace.selected || distanceRace.leader;
@@ -3401,7 +3527,7 @@
           ? "rhomb overlay off"
           : rhombOverlay.limitExceeded || rhombOverlay.suspended
             ? "rhomb overlay paused"
-            : formatNumber(rhombOverlay.drawn) + " visible rhombs")
+            : formatNumber(rhombOverlay.drawn) + " cached rhombs")
         : "") +
       "; " + candidateText;
 
@@ -3411,6 +3537,7 @@
       if (Math.abs(targetScale - state.scale) > 0.5) {
         state.scale = targetScale;
         placeOriginAtLensCenter();
+        clearRhombBitmapCache();
         state.dirty = true;
         requestDraw();
       }
@@ -3429,6 +3556,7 @@
   function setField(fieldId) {
     const field = fieldById.get(fieldId) || FIELDS[0];
     hidePointTooltip();
+    finishRhombViewMotion();
     clearRhombOverlayCache();
     state.fieldId = field.id;
     state.windowRadius = field.defaultWindow;
@@ -3470,6 +3598,7 @@
   function updateWindowRadius() {
     hidePointTooltip();
     const field = currentField();
+    finishRhombViewMotion();
     clearRhombOverlayCache();
     state.windowRadius = Number(windowInput.value);
     windowLabel.textContent = windowControlValueText(field, state.windowRadius);
@@ -3773,6 +3902,7 @@
   canvas.addEventListener("pointerdown", (event) => {
     canvas.setPointerCapture(event.pointerId);
     hidePointTooltip();
+    beginRhombViewMotion();
     state.dragging = true;
     state.lastX = event.clientX;
     state.lastY = event.clientY;
@@ -3796,6 +3926,7 @@
 
   canvas.addEventListener("pointerup", (event) => {
     state.dragging = false;
+    finishRhombViewMotion();
     canvas.releasePointerCapture(event.pointerId);
     canvas.classList.remove("dragging");
     updatePointTooltip(event);
@@ -3805,6 +3936,7 @@
 
   canvas.addEventListener("pointercancel", () => {
     state.dragging = false;
+    finishRhombViewMotion();
     canvas.classList.remove("dragging");
     hidePointTooltip();
     state.dirty = true;
