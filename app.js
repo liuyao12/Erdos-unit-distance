@@ -16,6 +16,7 @@
   const zoomInButton = document.getElementById("zoomIn");
   const zoomOutButton = document.getElementById("zoomOut");
   const edgesButton = document.getElementById("edges");
+  const tilesButton = document.getElementById("tiles");
   const pointsButton = document.getElementById("points");
   const gridButton = document.getElementById("grid");
   const saveButton = document.getElementById("save");
@@ -719,6 +720,7 @@
   const DISTANCE_RACE_ROWS = 6;
   const MOBILE_DISTANCE_RACE_ROWS = 4;
   const DISTANCE_KEY_SCALE = 1000000;
+  const RHOMB_TILE_CANDIDATE_LIMIT = 1200000;
   const DISTANCE_COLORS = [
     "#f0a000",
     "#2f66ff",
@@ -758,6 +760,7 @@
     fieldId: "zeta5",
     windowRadius: 2,
     showEdges: true,
+    showTiles: true,
     showPoints: true,
     showGrid: true,
     dragging: false,
@@ -1445,12 +1448,15 @@
     if (canComplete(0)) visit(0);
 
     const edges = buildUnitDistanceEdges(points, field);
+    const rhombs = buildCyclotomicRhombTiles(field, points);
 
     const dataset = {
       field,
       windowRadius,
       points,
       edges,
+      rhombTiles: rhombs.tiles,
+      rhombTileLimitExceeded: rhombs.limitExceeded,
       queryBounds: plan.queryBounds || plan.bounds,
       candidateCount: total,
       testedCandidateCount,
@@ -2085,6 +2091,15 @@
       formatNumber(graph.edges.length) + "e</strong></span>";
   }
 
+  function rhombMeasureHtml(field, dataset, visibleRhombs) {
+    if (!field || field.type !== "cyclotomic") return "";
+    if (!dataset || !dataset.rhombTiles) return "";
+    const total = dataset.rhombTileLimitExceeded ? "paused" : formatNumber(dataset.rhombTiles.length);
+    return "<span>rhombs: <strong>" + total + "</strong>" +
+      (visibleRhombs ? " <span class=\"status-source-note\">/" + formatNumber(visibleRhombs) + " shown</span>" : "") +
+      "</span>";
+  }
+
   function fieldPanelInfoHtml(field) {
     return (
       "<div class=\"field-info-kicker\">field</div>" +
@@ -2134,6 +2149,86 @@
     }
     rootPowerCoefficientCache.set(field.id, roots);
     return roots;
+  }
+
+  function integerCoefficientKey(coeffs) {
+    return coeffs.join(",");
+  }
+
+  function addIntegerCoefficientVectors(left, right) {
+    const out = new Array(left.length);
+    for (let i = 0; i < left.length; i += 1) {
+      out[i] = left[i] + right[i];
+    }
+    return out;
+  }
+
+  function cyclicSeparation(left, right, modulus) {
+    const delta = Math.abs(left - right) % modulus;
+    return Math.min(delta, modulus - delta);
+  }
+
+  function cyclotomicRhombColor(shapeIndex) {
+    return DISTANCE_COLORS[(Math.max(1, shapeIndex) - 1) % DISTANCE_COLORS.length];
+  }
+
+  function buildCyclotomicRhombTiles(field, points) {
+    if (!field || field.type !== "cyclotomic" || !points.length) {
+      return { tiles: [], limitExceeded: false };
+    }
+
+    const directions = rootPowerCoefficients(field);
+    const candidatePairs = [];
+    for (let i = 0; i < directions.length; i += 1) {
+      for (let j = i + 1; j < directions.length; j += 1) {
+        const shapeIndex = cyclicSeparation(directions[i].power, directions[j].power, field.m);
+        if (shapeIndex === 0) continue;
+        if (field.m % 2 === 0 && shapeIndex === field.m / 2) continue;
+        candidatePairs.push({ left: directions[i], right: directions[j], shapeIndex });
+      }
+    }
+
+    if (points.length * candidatePairs.length > RHOMB_TILE_CANDIDATE_LIMIT) {
+      return { tiles: [], limitExceeded: true };
+    }
+
+    const indexByCoefficients = new Map();
+    for (let i = 0; i < points.length; i += 1) {
+      if (points[i].coeffs) {
+        indexByCoefficients.set(integerCoefficientKey(points[i].coeffs), i);
+      }
+    }
+
+    const tiles = [];
+    const seen = new Set();
+    for (let baseIndex = 0; baseIndex < points.length; baseIndex += 1) {
+      const basePoint = points[baseIndex];
+      if (!basePoint.coeffs) continue;
+
+      for (const pair of candidatePairs) {
+        const leftCoeffs = addIntegerCoefficientVectors(basePoint.coeffs, pair.left.coeffs);
+        const rightCoeffs = addIntegerCoefficientVectors(basePoint.coeffs, pair.right.coeffs);
+        const farCoeffs = addIntegerCoefficientVectors(leftCoeffs, pair.right.coeffs);
+        const leftIndex = indexByCoefficients.get(integerCoefficientKey(leftCoeffs));
+        const rightIndex = indexByCoefficients.get(integerCoefficientKey(rightCoeffs));
+        const farIndex = indexByCoefficients.get(integerCoefficientKey(farCoeffs));
+        if (leftIndex === undefined || rightIndex === undefined || farIndex === undefined) continue;
+
+        const vertexKey = [baseIndex, leftIndex, farIndex, rightIndex]
+          .slice()
+          .sort((a, b) => a - b)
+          .join(",");
+        if (seen.has(vertexKey)) continue;
+        seen.add(vertexKey);
+
+        tiles.push({
+          vertices: [baseIndex, leftIndex, farIndex, rightIndex],
+          shapeIndex: pair.shapeIndex
+        });
+      }
+    }
+
+    return { tiles, limitExceeded: false };
   }
 
   function coefficientsEqual(a, b) {
@@ -2793,6 +2888,37 @@
     return drawn;
   }
 
+  function drawCyclotomicRhombTiles(tiles, points, visible) {
+    if (!tiles || !tiles.length) return 0;
+
+    let drawn = 0;
+    ctx.save();
+    ctx.lineJoin = "round";
+    ctx.lineWidth = Math.max(0.35, Math.min(0.85, state.scale * 0.007));
+    for (const tile of tiles) {
+      if (!tile.vertices.some((index) => visible[index])) continue;
+
+      const first = worldToScreen(points[tile.vertices[0]].x, points[tile.vertices[0]].y);
+      ctx.beginPath();
+      ctx.moveTo(first.x, first.y);
+      for (let i = 1; i < tile.vertices.length; i += 1) {
+        const point = points[tile.vertices[i]];
+        const screen = worldToScreen(point.x, point.y);
+        ctx.lineTo(screen.x, screen.y);
+      }
+      ctx.closePath();
+
+      const color = cyclotomicRhombColor(tile.shapeIndex);
+      ctx.fillStyle = colorWithAlpha(color, 0.04);
+      ctx.strokeStyle = colorWithAlpha(color, 0.13);
+      ctx.fill();
+      ctx.stroke();
+      drawn += 1;
+    }
+    ctx.restore();
+    return drawn;
+  }
+
   function drawMoserGraphOverlay(graph) {
     if (!graph || !graph.points.length) return 0;
 
@@ -3096,6 +3222,9 @@
 
     const drawEdgeLimit = 900000;
     const countEdgeLimit = 1600000;
+    const visibleRhombs = state.showTiles
+      ? drawCyclotomicRhombTiles(dataset.rhombTiles, points, visible)
+      : 0;
     const distanceRace = buildDistanceRace(field, points, lensIndices, state.selectedDistanceKey);
     const activeDistance = distanceRace.selected || distanceRace.leader;
     const winningEdges = distanceRace.exact && activeDistance
@@ -3189,6 +3318,7 @@
         field,
         field.statusWindowValue === "window" ? state.windowRadius : lensWorldRadius
       ) + "</span>" +
+      rhombMeasureHtml(field, dataset, visibleRhombs) +
       graphMeasureHtml(highlightedGraph) +
       "</div>" +
       "</div>" +
@@ -3210,7 +3340,11 @@
       activeGraphTitle + "; lens has " + formatNumber(lensPoints) +
       " points; computed viewport patch: " +
       formatNumber(points.length) + " points, " +
-      formatNumber(edges.length) + " unit distances; " + candidateText;
+      formatNumber(edges.length) + " unit distances" +
+      (field.type === "cyclotomic"
+        ? ", " + (dataset.rhombTileLimitExceeded ? "rhomb overlay paused" : formatNumber(dataset.rhombTiles.length) + " rhombs")
+        : "") +
+      "; " + candidateText;
 
     if (state.autoFitPending) {
       state.autoFitPending = false;
@@ -3258,6 +3392,14 @@
     if (fieldInfoEl) {
       fieldInfoEl.innerHTML = fieldPanelInfoHtml(field);
       fieldInfoEl.title = fieldRelationText(field);
+    }
+    if (tilesButton) {
+      const hasCyclotomicRhombs = field.type === "cyclotomic";
+      tilesButton.disabled = !hasCyclotomicRhombs;
+      tilesButton.classList.toggle("active", hasCyclotomicRhombs && state.showTiles);
+      tilesButton.title = hasCyclotomicRhombs
+        ? "Toggle projected square-face rhombs"
+        : "Rhomb tiles are available for cyclotomic fields";
     }
     updateFieldPoset();
     renderLatticeOptions();
@@ -3647,6 +3789,15 @@
     state.dirty = true;
     requestDraw();
   });
+  if (tilesButton) {
+    tilesButton.addEventListener("click", () => {
+      if (tilesButton.disabled) return;
+      state.showTiles = !state.showTiles;
+      tilesButton.classList.toggle("active", state.showTiles);
+      state.dirty = true;
+      requestDraw();
+    });
+  }
   pointsButton.addEventListener("click", () => {
     state.showPoints = !state.showPoints;
     pointsButton.classList.toggle("active", state.showPoints);
