@@ -24,6 +24,8 @@ $$
 
 For the square-root examples, the app uses the displayed basis, such as `1, α` for `α² = -2` and `1, α, β, αβ` for `α² = -2, β² = -3`. The canvas uses the first complex embedding as physical space. For fields with additional complex embeddings, the app keeps only points whose internal embeddings lie inside radius-`W` disks. This window makes the projected point set locally finite; projecting the whole higher-dimensional order without a window would be dense.
 
+For cyclotomic fields, the rhomb overlay projects square faces spanned by root-of-unity directions. A square using directions `ζ^i` and `ζ^j` becomes a rhomb in the plane, with its shape determined by the cyclic separation `min(|i-j|, m-|i-j|)`. The same single `W` control selects the vertices used for both the point set and this square-face overlay.
+
 ## Distance Edges
 
 The circular lens defines the finite point set currently being measured. Inside that lens, the app counts all pair distances, groups equal distances by the exact coefficient vector for
@@ -46,7 +48,7 @@ This is an illustration tool for selected number-field point sets. It is not try
 - Drag to pan.
 - Mouse wheel or trackpad scroll to zoom.
 - Use the left poset to change fields; on mobile, open it from the fields button in the toolbar.
-- Use the toolbar to toggle leader-distance edges, toggle points/grid, change the internal window radius, export a PNG, or export the current lens as SVG.
+- Use the toolbar to toggle leader-distance edges, cyclotomic rhombs, points/grid, change the internal window radius, export a PNG, or export the current lens as SVG.
 
 ## Files
 
