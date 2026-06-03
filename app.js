@@ -705,8 +705,6 @@
 
   const FIELD_POSET_MIN_DEGREE = Math.min(...FIELD_POSET_NODES.map(fieldPosetNodeDegree));
   const FIELD_POSET_MAX_DEGREE = Math.max(...FIELD_POSET_NODES.map(fieldPosetNodeDegree));
-  const FIELD_POSET_DEGREES = [...new Set(FIELD_POSET_NODES.map(fieldPosetNodeDegree))]
-    .sort((a, b) => b - a);
   const embeddingGeometryCache = new Map();
   const rootPowerCoefficientCache = new Map();
   const exactAlgebraCache = new Map();
@@ -1720,10 +1718,8 @@
         ? String(numeratorRoot)
         : String(numeratorRoot) + "/" + String(denominatorRoot);
     }
-    const body = value.d === 1n
-      ? String(value.n)
-      : String(value.n) + "/" + String(value.d);
-    return "sqrt(" + body + ")";
+    if (value.d === 1n) return "√" + String(value.n);
+    return "√(" + String(value.n) + "/" + String(value.d) + ")";
   }
 
   function escapeHtml(value) {
@@ -2050,15 +2046,6 @@
     return "<span class=\"field-label\"><strong>Q</strong>(" + generator + ")</span>";
   }
 
-  function fieldHeadingHtml(field) {
-    const alias = field.aliasHtml
-      ? " <span class=\"field-alias-inline\">= " + field.aliasHtml + "</span>"
-      : "";
-    return formatFieldLabelHtml(field) +
-      " <span class=\"field-degree-inline\">degree " + fieldDegree(field) + "</span>" +
-      alias;
-  }
-
   function latticeStatusHtml(field) {
     return "<span class=\"status-lattice\">source: " + latticeLabelHtml(field) + "</span>";
   }
@@ -2105,9 +2092,18 @@
   }
 
   function fieldPanelInfoHtml(field) {
+    const alias = field.aliasHtml
+      ? "<div class=\"field-info-alias\">= " + field.aliasHtml + "</div>"
+      : "";
     return (
-      "<div class=\"field-info-kicker\">field</div>" +
-      "<div class=\"field-info-main\">" + fieldHeadingHtml(field) + "</div>"
+      "<div class=\"field-info-top\">" +
+      "<div class=\"field-info-name\">" +
+      "<div class=\"field-info-kicker\">selected field</div>" +
+      "<div class=\"field-info-main\">" + formatFieldLabelHtml(field) + "</div>" +
+      "</div>" +
+      "<div class=\"field-info-degree\">degree " + fieldDegree(field) + "</div>" +
+      "</div>" +
+      alias
     );
   }
 
@@ -2116,9 +2112,22 @@
   }
 
   function zetaDefinitionText(field) {
-    if (field.definitionText) return field.definitionText;
-    if (field.id === "gaussian") return "i = √-1";
-    return "ζ = exp(2πi/" + field.m + ")";
+    if (field.id === "gaussian") return "i = √−1";
+    if (field.id === "eisenstein") return "ζ = exp(2πi/3) = (−1 + i√3)/2";
+    if (field.id === "sqrtMinus3Order") return "β = √−3";
+    if (field.id === "sqrtMinus2") return "α = √−2";
+    if (field.id === "zeta8Suborder") return "i = √−1, r = √2";
+    if (field.id === "zeta12Suborder") return "i = √−1, r = √3";
+    if (field.id === "sqrtMinus2SqrtMinus3OK") return "a = √−2, z = exp(2πi/3)";
+    if (field.id === "sqrtMinus2SqrtMinus3") return "α = √−2, β = √−3";
+    if (field.id === "moserRing" || field.id === "moserLattice") {
+      return "ω₁ = (1 + √−3)/2, ω₃ = (5 + √−11)/6";
+    }
+    if (field.id === "moserOK") return "ζ = exp(2πi/3), η = (1 + √−11)/2";
+    if (field.type === "cyclotomic") return "ζ = exp(2πi/" + field.m + ")";
+    return field.basisLabels && field.basisLabels.length > 1
+      ? field.basisLabels.slice(1).join(", ")
+      : "";
   }
 
   function reducePowerCoefficients(field, power) {
@@ -3775,14 +3784,6 @@
     lines.classList.add("poset-lines");
     lines.setAttribute("aria-hidden", "true");
     fieldPosetEl.replaceChildren(lines);
-
-    for (const degree of FIELD_POSET_DEGREES) {
-      const marker = document.createElement("div");
-      marker.className = "degree-marker";
-      marker.style.setProperty("--y", fieldPosetYForDegree(degree).toFixed(2) + "%");
-      marker.textContent = "degree " + degree;
-      fieldPosetEl.appendChild(marker);
-    }
 
     for (const node of FIELD_POSET_NODES) {
       const field = node.fieldId ? fieldById.get(node.fieldId) : null;
