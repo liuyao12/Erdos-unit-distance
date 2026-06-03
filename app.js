@@ -3498,6 +3498,16 @@
     drawMoserGraphOverlay(highlightedGraph);
 
     if (state.hoverPoint && hoverEdges.length) {
+      const hoverInsideEdges = [];
+      const hoverOutsideEdges = [];
+      for (const edge of hoverEdges) {
+        const [i, j] = edge;
+        if (inLens[i] && inLens[j]) {
+          hoverInsideEdges.push(edge);
+        } else {
+          hoverOutsideEdges.push(edge);
+        }
+      }
       drawEdgeSegments(
         hoverEdges,
         points,
@@ -3505,7 +3515,13 @@
         leaderEdgeLineWidth(4.1)
       );
       drawEdgeSegments(
-        hoverEdges,
+        hoverOutsideEdges,
+        points,
+        "rgba(84, 89, 96, 0.72)",
+        leaderEdgeLineWidth(2.15)
+      );
+      drawEdgeSegments(
+        hoverInsideEdges,
         points,
         leaderEdgeStroke(activeDistance, 0.96),
         leaderEdgeLineWidth(2.65)
