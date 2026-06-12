@@ -23,6 +23,9 @@
   const saveSvgButton = document.getElementById("saveSvg");
   const windowInput = document.getElementById("windowRadius");
   const windowLabel = document.getElementById("windowLabel");
+  const moserSeedControl = document.getElementById("moserSeedWrap");
+  const moserSeedInput = document.getElementById("moserSeedWindow");
+  const moserSeedLabel = document.getElementById("moserSeedLabel");
 
   const PHI = {
     3: [1, 1, 1],
@@ -498,19 +501,22 @@
       shortLabel: "Moser ring",
       generatorHtml: "&radic;-3,&radic;-11",
       latticeLabelHtml: "Z[ω_1,ω_3]",
-      latticeNoteHtml: "not contained in O_K",
+      latticeNoteHtml: "inside O_K[1/3], not O_K",
       statusSourceHtml: "Moser ring = Z[ω_1,ω_3]",
-      statusSourceNoteHtml: "not in O_K",
+      statusSourceNoteHtml: "inside O_K[1/3]",
       latticeParentId: "moserAmbient",
       latticeX: 30,
       latticeY: 43,
       basisLabels: ["1", "ω_1", "ω_3", "ω_1ω_3"],
-      definitionText: "ω_1=(1+√-3)/2, ω_3=(5+√-11)/6; ω_3 is not integral",
-      relationText: "Z[ω_1,ω_3] is a subring of K, but it is not contained in O_K",
+      definitionText: "ω_1=1+ζ_3, ω_3=(η+2)/3; the ring lies in O_K[1/3] but not O_K",
+      relationText: "Z[ω_1,ω_3] ⊂ O_K[1/3], with ω_1=1+ζ_3 and ω_3=(η+2)/3",
       degree: 4,
       exactAlgebra: MOSER_BASIS_EXACT_ALGEBRA,
       sampleKind: "moserRing",
       sampleBaseWindow: 1.8,
+      sampleBaseWindowMin: 0.8,
+      sampleBaseWindowMax: 3,
+      sampleBaseWindowStep: 0.1,
       embeddings: [
         [
           { re: 1, im: 0 },
@@ -532,8 +538,8 @@
       windowStep: 1,
       windowLabelPrefix: "D",
       windowValueFormat: "integer",
-      windowTitle: "Moser sample depth D: larger D adds rotated copies; the spindle highlight is always shown in full",
-      statusWindowLabel: "sample depth",
+      windowTitle: "3-adic denominator screen D: show the seed patch multiplied by powers ω_3^k with 0 ≤ k ≤ D, so denominators divide 3^D (up to cancellation)",
+      statusWindowLabel: "3-adic D",
       statusWindowValue: "window",
       highlightGraph: "moserChain",
       pointFill: "#c07a36",
@@ -580,6 +586,58 @@
       pointFill: "#6f6a9d",
       pointStroke: "rgba(68, 64, 112, 0.72)",
       edgeStroke: "rgba(91, 84, 148, 0.3)"
+    },
+    {
+      id: "moserOKLocalizedAt3",
+      fieldGroup: "moser",
+      type: "basis",
+      label: "Q(sqrt(-3), sqrt(-11))",
+      shortLabel: "O_K[1/3]",
+      generatorHtml: "&radic;-3,&radic;-11",
+      latticeLabelHtml: "O<sub>K</sub>[1/3]",
+      latticeNoteHtml: "3-localized integers",
+      statusSourceHtml: "O<sub>K</sub>[1/3] = Z[ζ_3,η,1/3]",
+      statusSourceNoteHtml: "contains the Moser ring",
+      latticeParentId: "moserOK",
+      latticeX: 72,
+      latticeY: 61,
+      basisLabels: ["1", "ζ", "η", "ζη"],
+      definitionText: "O_K[1/3] = Z[ζ_3,η,1/3]; since ω_1=1+ζ_3 and ω_3=(η+2)/3, the Moser ring lies inside O_K[1/3]",
+      relationText: "Z[ω_1,ω_3] ⊂ O_K[1/3], with ω_1=1+ζ_3 and ω_3=(η+2)/3",
+      degree: 4,
+      exactAlgebra: MOSER_OK_EXACT_ALGEBRA,
+      sampleKind: "threeLocalization",
+      sampleBaseWindow: 1.5,
+      sampleBaseWindowMin: 0.6,
+      sampleBaseWindowMax: 2.4,
+      sampleBaseWindowStep: 0.1,
+      embeddings: [
+        [
+          { re: 1, im: 0 },
+          ZETA3_VALUE,
+          ETA11_PLUS,
+          complexProduct(ZETA3_VALUE, ETA11_PLUS)
+        ],
+        [
+          { re: 1, im: 0 },
+          ZETA3_VALUE,
+          ETA11_MINUS,
+          complexProduct(ZETA3_VALUE, ETA11_MINUS)
+        ]
+      ],
+      defaultLensWorldRadius: 2,
+      defaultWindow: 1,
+      windowMin: 0,
+      windowMax: 2,
+      windowStep: 1,
+      windowLabelPrefix: "D",
+      windowValueFormat: "integer",
+      windowTitle: "3-adic denominator screen D for O_K[1/3]: show integral-basis points with denominators dividing 3^D (up to cancellation)",
+      statusWindowLabel: "3-adic D",
+      statusWindowValue: "window",
+      pointFill: "#8f6bb1",
+      pointStroke: "rgba(83, 59, 116, 0.72)",
+      edgeStroke: "rgba(125, 86, 168, 0.3)"
     },
     {
       id: "moserLattice",
@@ -759,6 +817,7 @@
     scale: 80,
     fieldId: "zeta5",
     windowRadius: 2,
+    moserSeedWindow: 1.8,
     showEdges: true,
     showTiles: true,
     showPoints: true,
@@ -854,6 +913,14 @@
   function rationalMul(left, right) {
     if (rationalIsZero(left) || rationalIsZero(right)) return rational(0n, 1n);
     return rational(left.n * right.n, left.d * right.d);
+  }
+
+  function rationalDivInt(left, denominator) {
+    return rational(left.n, left.d * BigInt(denominator));
+  }
+
+  function rationalMulInt(left, multiplier) {
+    return rational(left.n * BigInt(multiplier), left.d);
   }
 
   function rationalKey(value) {
@@ -1174,6 +1241,29 @@
     return clamp(field.windowMin || 0, Math.round(windowRadius), field.windowMax || 0);
   }
 
+  function moserSeedWindowValue(field) {
+    const fallback = Number.isFinite(field.sampleBaseWindow) ? field.sampleBaseWindow : 1.8;
+    if (!fieldUsesSeedWindow(field)) return fallback;
+    return Number.isFinite(state.moserSeedWindow) ? state.moserSeedWindow : fallback;
+  }
+
+  function fieldUsesSeedWindow(field) {
+    return field && (field.sampleKind === "moserRing" || field.sampleKind === "threeLocalization");
+  }
+
+  function moserSeedWindowText(value) {
+    return "W₀=" + value.toFixed(1);
+  }
+
+  function scaleBounds(bounds, factor) {
+    return {
+      xMin: bounds.xMin * factor,
+      yMin: bounds.yMin * factor,
+      xMax: bounds.xMax * factor,
+      yMax: bounds.yMax * factor
+    };
+  }
+
   function moserRingPhysicalPowers(field, depth) {
     const embeddings = fieldEmbeddingValues(field);
     return complexUnitPowers(embeddings[0][2], depth);
@@ -1181,6 +1271,37 @@
 
   function moserRingExactPowerCoefficients(field, depth) {
     return hasExactDistanceAlgebra(field) ? exactPowerCoefficients(field, 2, depth) : null;
+  }
+
+  function moserOkCoordinatesFromRingCoefficients(coeffs) {
+    const zero = rational(0n, 1n);
+    const c0 = coeffs[0] || zero;
+    const c1 = coeffs[1] || zero;
+    const c2 = coeffs[2] || zero;
+    const c3 = coeffs[3] || zero;
+    return [
+      rationalAdd(rationalAdd(c0, c1), rationalDivInt(rationalAdd(rationalMulInt(c2, 2), rationalMulInt(c3, 2)), 3)),
+      rationalAdd(c1, rationalDivInt(rationalMulInt(c3, 2), 3)),
+      rationalDivInt(rationalAdd(c2, c3), 3),
+      rationalDivInt(c3, 3)
+    ];
+  }
+
+  function factorExponentBigInt(value, prime) {
+    let remaining = bigintAbs(value);
+    const p = BigInt(prime);
+    let exponent = 0;
+    while (remaining > 1n && remaining % p === 0n) {
+      remaining /= p;
+      exponent += 1;
+    }
+    return exponent;
+  }
+
+  function moserThreeDenominatorExponent(coeffs) {
+    return moserOkCoordinatesFromRingCoefficients(coeffs).reduce((maxExponent, coefficient) => {
+      return Math.max(maxExponent, factorExponentBigInt(coefficient.d, 3));
+    }, 0);
   }
 
   function inverseRotatedBoundsForPowers(bounds, powers) {
@@ -1259,6 +1380,27 @@
     return { ranges, candidateCount };
   }
 
+  function localizationAt3Plan(field, depth, baseWindowRadius, queryBounds) {
+    const levels = [];
+    let candidateCount = 0;
+    for (let denominatorPower = 0; denominatorPower <= depth; denominatorPower += 1) {
+      const scale = 3 ** denominatorPower;
+      const bounds = scaleBounds(queryBounds, scale);
+      const windowRadius = baseWindowRadius * scale;
+      const { ranges, candidateCount: levelCandidateCount } = coefficientRangesForRegion(field, windowRadius, bounds);
+      candidateCount += levelCandidateCount;
+      levels.push({
+        denominatorPower,
+        scale,
+        bounds,
+        ranges,
+        windowRadius,
+        candidateCount: levelCandidateCount
+      });
+    }
+    return { levels, candidateCount };
+  }
+
   function datasetPlan(field, windowRadius, viewBounds) {
     const degree = fieldDegree(field);
     const factors = degree >= 8
@@ -1266,14 +1408,34 @@
       : [DATA_BUFFER_LINEAR_FACTOR, 2.5, 2, 1.6, 1.3, 1.1, 1];
     const extraWorld = degree >= 8 ? 0.1 : DATA_BUFFER_EXTRA_WORLD;
     const isMoserRingSample = field.sampleKind === "moserRing";
-    const depth = isMoserRingSample ? sampleDepth(field, windowRadius) : null;
+    const isThreeLocalization = field.sampleKind === "threeLocalization";
+    const depth = isMoserRingSample || isThreeLocalization ? sampleDepth(field, windowRadius) : null;
     const powers = isMoserRingSample ? moserRingPhysicalPowers(field, depth) : null;
     const exactPowers = isMoserRingSample ? moserRingExactPowerCoefficients(field, depth) : null;
-    const basisWindowRadius = isMoserRingSample ? field.sampleBaseWindow : windowRadius;
+    const basisWindowRadius = fieldUsesSeedWindow(field) ? moserSeedWindowValue(field) : windowRadius;
     let fallback = null;
 
     for (const factor of factors) {
       const queryBounds = expandBounds(viewBounds, factor, extraWorld);
+      if (isThreeLocalization) {
+        const localizationPlan = localizationAt3Plan(field, depth, basisWindowRadius, queryBounds);
+        const plan = {
+          bounds: queryBounds,
+          queryBounds,
+          candidateCount: localizationPlan.candidateCount,
+          sampleDepth: depth,
+          baseWindowRadius: basisWindowRadius,
+          localizationLevels: localizationPlan.levels
+        };
+        if (!fallback || plan.candidateCount < fallback.candidateCount) {
+          fallback = plan;
+        }
+        if (plan.candidateCount <= MAX_DYNAMIC_CANDIDATES) {
+          return plan;
+        }
+        continue;
+      }
+
       const bounds = isMoserRingSample
         ? inverseRotatedBoundsForPowers(queryBounds, powers)
         : queryBounds;
@@ -1456,6 +1618,7 @@
     const dataset = {
       field,
       windowRadius,
+      moserSeedWindow: null,
       points,
       edges,
       coefficientIndex: buildIntegerCoefficientIndex(points),
@@ -1474,6 +1637,13 @@
     if (powerIndex === 0 || base === "0") return base;
     const power = powerIndex === 1 ? "ω_3" : "ω_3^" + powerIndex;
     return base === "1" ? power : power + " · (" + base + ")";
+  }
+
+  function localizedAt3Expression(field, coeffs, denominatorPower) {
+    const base = formatFieldInteger(field, coeffs);
+    if (denominatorPower === 0 || base === "0") return base;
+    const scale = denominatorPower === 1 ? "1/3" : "1/3^" + denominatorPower;
+    return scale + " · (" + base + ")";
   }
 
   function physicalPointFromCoefficients(field, coeffs) {
@@ -1535,7 +1705,7 @@
     const exactPowers = plan.sampleExactPowers || moserRingExactPowerCoefficients(field, depth);
     const baseWindowRadius = Number.isFinite(plan.baseWindowRadius)
       ? plan.baseWindowRadius
-      : field.sampleBaseWindow;
+      : moserSeedWindowValue(field);
     const baseDataset = buildBasisDataset(field, baseWindowRadius, plan);
     const points = [];
     const seen = new Set();
@@ -1553,6 +1723,9 @@
         const exactCoeffs = exactPowers
           ? multiplyExactCoefficients(field, exactPowers[powerIndex], exactPointCoefficients(basePoint))
           : null;
+        const denominatorExponent = exactCoeffs ? moserThreeDenominatorExponent(exactCoeffs) : powerIndex;
+        if (denominatorExponent > depth) continue;
+
         const key = exactCoeffs ? rationalVectorKey(exactCoeffs) : roundedPointKey(p.x, p.y);
         if (seen.has(key)) continue;
         seen.add(key);
@@ -1563,6 +1736,7 @@
           y: p.y,
           coeffs,
           exactCoeffs,
+          denominatorExponent,
           expression: samplePowerExpression(field, basePoint.coeffs, powerIndex),
           rootPower: null
         });
@@ -1577,6 +1751,7 @@
     return {
       field,
       windowRadius,
+      moserSeedWindow: baseWindowRadius,
       points,
       edges,
       queryBounds: plan.queryBounds,
@@ -1585,13 +1760,96 @@
       bounds: { minX, minY, maxX, maxY },
       buildMs: performance.now() - started,
       exactPhysicalCrop: false,
-      candidateLabel: "sampled ring elements"
+      candidateLabel: "3-adically screened ring elements"
+    };
+  }
+
+
+  function buildThreeLocalizationDataset(field, windowRadius, plan) {
+    const started = performance.now();
+    const depth = Number.isFinite(plan.sampleDepth)
+      ? plan.sampleDepth
+      : sampleDepth(field, windowRadius);
+    const baseWindowRadius = Number.isFinite(plan.baseWindowRadius)
+      ? plan.baseWindowRadius
+      : moserSeedWindowValue(field);
+    const levels = plan.localizationLevels || localizationAt3Plan(field, depth, baseWindowRadius, plan.queryBounds).levels;
+    const points = [];
+    const seen = new Set();
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    let candidateCount = 0;
+    let testedCandidateCount = 0;
+
+    for (const level of levels) {
+      const levelPlan = {
+        bounds: level.bounds,
+        queryBounds: level.bounds,
+        ranges: level.ranges,
+        candidateCount: level.candidateCount
+      };
+      const baseDataset = buildBasisDataset(field, level.windowRadius, levelPlan);
+      candidateCount += baseDataset.candidateCount;
+      testedCandidateCount += baseDataset.testedCandidateCount;
+
+      for (const basePoint of baseDataset.points) {
+        const x = basePoint.x / level.scale;
+        const y = basePoint.y / level.scale;
+        if (!pointInsideBounds(x, y, plan.queryBounds)) continue;
+
+        const exactCoeffs = exactPointCoefficients(basePoint).map((coefficient) => {
+          return level.denominatorPower === 0 ? coefficient : rationalDivInt(coefficient, level.scale);
+        });
+        const denominatorExponent = exactCoeffs.reduce((maxExponent, coefficient) => {
+          return Math.max(maxExponent, factorExponentBigInt(coefficient.d, 3));
+        }, 0);
+        if (denominatorExponent > depth) continue;
+
+        const key = rationalVectorKey(exactCoeffs);
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        points.push({
+          x,
+          y,
+          coeffs: level.denominatorPower === 0 ? basePoint.coeffs.slice() : null,
+          exactCoeffs,
+          denominatorExponent,
+          expression: localizedAt3Expression(field, basePoint.coeffs, level.denominatorPower),
+          rootPower: null
+        });
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+
+    const edges = buildUnitDistanceEdges(points, field);
+    return {
+      field,
+      windowRadius,
+      moserSeedWindow: baseWindowRadius,
+      points,
+      edges,
+      queryBounds: plan.queryBounds,
+      candidateCount,
+      testedCandidateCount,
+      bounds: { minX, minY, maxX, maxY },
+      buildMs: performance.now() - started,
+      exactPhysicalCrop: false,
+      candidateLabel: "O_K[1/3] denominator candidates"
     };
   }
 
   function buildDataset(field, windowRadius, plan) {
     if (field.sampleKind === "moserRing") {
       return buildMoserRingDataset(field, windowRadius, plan);
+    }
+    if (field.sampleKind === "threeLocalization") {
+      return buildThreeLocalizationDataset(field, windowRadius, plan);
     }
     return buildBasisDataset(field, windowRadius, plan);
   }
@@ -1602,6 +1860,7 @@
       current &&
       current.field.id === field.id &&
       current.windowRadius === windowRadius &&
+      current.moserSeedWindow === (fieldUsesSeedWindow(field) ? moserSeedWindowValue(field) : null) &&
       current.queryBounds &&
       boundsContains(current.queryBounds, viewBounds)
     ) {
@@ -2076,6 +2335,13 @@
     return escapeHtml(label) + ": <strong>" + escapeHtml(formatted) + "</strong>";
   }
 
+  function moserSeedMeasureHtml(field) {
+    if (!fieldUsesSeedWindow(field)) return "";
+    return "<span>seed window W₀: <strong>" +
+      escapeHtml(moserSeedWindowValue(field).toFixed(1)) +
+      "</strong></span>";
+  }
+
   function graphMeasureHtml(graph) {
     if (!graph) return "";
     return "<span>" + escapeHtml(graph.name) + ": <strong>" +
@@ -2125,7 +2391,7 @@
     if (field.id === "moserRing" || field.id === "moserLattice") {
       return "ω₁ = (1 + √−3)/2, ω₃ = (5 + √−11)/6";
     }
-    if (field.id === "moserOK") return "ζ = exp(2πi/3), η = (1 + √−11)/2";
+    if (field.id === "moserOK" || field.id === "moserOKLocalizedAt3") return "ζ = exp(2πi/3), η = (1 + √−11)/2";
     if (field.type === "cyclotomic") return "ζ = exp(2πi/" + field.m + ")";
     return field.basisLabels && field.basisLabels.length > 1
       ? field.basisLabels.slice(1).join(", ")
@@ -2548,7 +2814,11 @@
       expressionEl.className = "tooltip-expression";
       noteEl.className = "tooltip-note";
       expressionEl.textContent = point.expression || formatFieldInteger(field, point.coeffs);
-      noteEl.textContent = zetaDefinitionText(field);
+      const noteParts = [zetaDefinitionText(field)];
+      if ((field.sampleKind === "moserRing" || field.sampleKind === "threeLocalization") && Number.isFinite(point.denominatorExponent)) {
+        noteParts.push("3-denominator exponent " + point.denominatorExponent);
+      }
+      noteEl.textContent = noteParts.filter(Boolean).join("; ");
       tooltipEl.replaceChildren(expressionEl, noteEl);
       state.hoverPoint = point;
       state.dirty = true;
@@ -3554,6 +3824,7 @@
         field,
         field.statusWindowValue === "window" ? state.windowRadius : lensWorldRadius
       ) + "</span>" +
+      moserSeedMeasureHtml(field) +
       rhombMeasureHtml(field, rhombOverlay) +
       graphMeasureHtml(highlightedGraph) +
       "</div>" +
@@ -3615,6 +3886,7 @@
     clearRhombOverlayCache();
     state.fieldId = field.id;
     state.windowRadius = field.defaultWindow;
+    state.moserSeedWindow = moserSeedWindowValue(field);
     state.selectedDistanceKey = null;
     windowInput.min = String(field.windowMin);
     windowInput.max = String(field.windowMax);
@@ -3631,6 +3903,22 @@
       windowLabel.innerHTML = field.windowLabelHtml || "full O<sub>K</sub>";
     } else {
       windowLabel.textContent = windowControlValueText(field, state.windowRadius);
+    }
+    if (moserSeedControl && moserSeedInput && moserSeedLabel) {
+      const showMoserSeed = fieldUsesSeedWindow(field);
+      moserSeedControl.hidden = !showMoserSeed;
+      if (showMoserSeed) {
+        const seedWindow = moserSeedWindowValue(field);
+        state.moserSeedWindow = seedWindow;
+        moserSeedInput.min = String(field.sampleBaseWindowMin || 0.8);
+        moserSeedInput.max = String(field.sampleBaseWindowMax || 3);
+        moserSeedInput.step = String(field.sampleBaseWindowStep || 0.1);
+        moserSeedInput.value = String(seedWindow);
+        moserSeedLabel.textContent = moserSeedWindowText(seedWindow);
+        moserSeedControl.title = field.sampleKind === "threeLocalization"
+          ? "Archimedean seed window W0 for each finite O_K[1/3] denominator layer; D controls the 3-adic denominator screen."
+          : "Archimedean seed window W0 for the finite patch before multiplying by powers of ω_3; D controls the 3-adic denominator screen.";
+      }
     }
     if (fieldInfoEl) {
       fieldInfoEl.innerHTML = fieldPanelInfoHtml(field);
@@ -3657,6 +3945,19 @@
     clearRhombOverlayCache();
     state.windowRadius = Number(windowInput.value);
     windowLabel.textContent = windowControlValueText(field, state.windowRadius);
+    state.dataset = null;
+    state.dirty = true;
+    requestDraw();
+  }
+
+  function updateMoserSeedWindow() {
+    if (!moserSeedInput || !moserSeedLabel) return;
+    hidePointTooltip();
+    const field = currentField();
+    finishRhombViewMotion();
+    clearRhombOverlayCache();
+    state.moserSeedWindow = Number(moserSeedInput.value);
+    moserSeedLabel.textContent = moserSeedWindowText(state.moserSeedWindow);
     state.dataset = null;
     state.dirty = true;
     requestDraw();
@@ -4074,6 +4375,7 @@
     requestDraw();
   });
   windowInput.addEventListener("input", updateWindowRadius);
+  if (moserSeedInput) moserSeedInput.addEventListener("input", updateMoserSeedWindow);
   saveButton.addEventListener("click", () => {
     const field = currentField();
     const link = document.createElement("a");

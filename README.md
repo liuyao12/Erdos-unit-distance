@@ -26,6 +26,8 @@ For the square-root examples, the app uses the displayed basis, such as `1, α` 
 
 For cyclotomic fields, the rhomb overlay projects square faces spanned by root-of-unity directions. A square using directions `ζ^i` and `ζ^j` becomes a rhomb in the plane, with its shape determined by the cyclic separation `min(|i-j|, m-|i-j|)`. The same single `W` control selects the vertices used for both the point set and this square-face overlay.
 
+The Moser ring `Z[ω_1,ω_3]`, with `ω_1=1+ζ_3` and `ω_3=(5+√-11)/6=(η+2)/3`, is contained in the localized integer ring `O_K[1/3]`. The Moser ring and `O_K[1/3]` views have a 3-adic denominator screen: their `D` slider keeps sampled points whose integral-basis coordinates have denominators dividing a power up to `3^D` (after cancellation), while the secondary `W₀` slider controls the Archimedean seed window used before applying the denominator layers.
+
 ## Distance Edges
 
 The circular lens defines the finite point set currently being measured. Inside that lens, the app counts all pair distances, groups equal distances by the exact coefficient vector for
@@ -49,6 +51,7 @@ This is an illustration tool for selected number-field point sets. It is not try
 - Mouse wheel or trackpad scroll to zoom.
 - Use the left poset to change fields; on mobile, open it from the fields button in the toolbar.
 - Use the toolbar to toggle leader-distance edges, cyclotomic rhombs, points/grid, change the internal window radius, export a PNG, or export the current lens as SVG.
+- In the Moser ring and `O_K[1/3]` views, use `D` as a 3-adic denominator cutoff and `W₀` as the seed cut-and-project radius.
 
 ## Files
 
