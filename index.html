@@ -860,6 +860,16 @@
       display: none;
     }
 
+    .slider-wrap.secondary-slider {
+      flex: 0.8 1 clamp(160px, 22vw, 270px);
+      min-width: 160px;
+      max-width: 300px;
+    }
+
+    .slider-wrap[hidden] {
+      display: none;
+    }
+
     input[type="range"] {
       width: auto;
       min-width: 0;
@@ -1057,6 +1067,10 @@
     <div class="slider-wrap" title="Window radius W: larger values admit more points">
       <span id="windowLabel">W=4.0</span>
       <input id="windowRadius" type="range" min="1" max="8" step="0.1" value="4" aria-label="Window radius W">
+    </div>
+    <div id="moserSeedWrap" class="slider-wrap secondary-slider" title="Moser seed window W0: Archimedean cut-and-project radius before applying the 3-adic denominator screen" hidden>
+      <span id="moserSeedLabel">W₀=1.8</span>
+      <input id="moserSeedWindow" type="range" min="0.8" max="3" step="0.1" value="1.8" aria-label="Moser seed window W0">
     </div>
     <button id="save" title="Save PNG" aria-label="Save PNG">
       <svg viewBox="0 0 24 24"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>
